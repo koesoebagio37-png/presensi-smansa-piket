@@ -1,0 +1,1350 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Piket - Data Pusat</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
+
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .view-section { display: none; }
+        .view-section.active { display: flex; }
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: #1e293b; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #475569; border-radius: 4px; }
+        .tab-btn.active { border-bottom-color: #6366f1; color: #818cf8; }
+        .modal-overlay { background: rgba(15, 23, 42, 0.95); backdrop-filter: blur(4px); }
+        
+        /* Zoom Viewer Styles */
+        .zoom-container { overflow: hidden; display: flex; align-items: center; justify-content: center; height: 100%; width: 100%; }
+        .zoom-content { transition: transform 0.2s ease-out; cursor: grab; max-width: 100%; max-height: 100%; object-fit: contain; }
+        .zoom-content:active { cursor: grabbing; }
+
+        /* Chart Container */
+        .chart-container { position: relative; height: 300px; width: 100%; }
+
+        /* --- PROJECTOR MODE STYLES --- */
+        body.projector-mode #sidebar { display: none !important; }
+        body.projector-mode #tab-container { display: none !important; }
+        body.projector-mode .admin-action { display: none !important; } /* Sembunyikan Tombol Admin */
+        body.projector-mode #btn-manual-input { display: none !important; } 
+        body.projector-mode #live-stats-bar { display: none !important; } /* Sembunyikan Statistik Kecil */
+        
+        /* Paksa Lebar Penuh */
+        body.projector-mode #main-content-area { width: 100% !important; flex: 1; }
+        body.projector-mode #content-live { 
+            padding: 0 !important; 
+            background: #0f172a; 
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        /* Header Besar untuk Token */
+        #projector-header { display: none; }
+        body.projector-mode #projector-header { 
+            display: flex; 
+            background: linear-gradient(135deg, #1e1b4b 0%, #312e81 100%);
+            padding: 1.5rem;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+            z-index: 50;
+            border-bottom: 4px solid #4f46e5;
+        }
+        
+        /* Token Sangat Besar */
+        body.projector-mode #projector-token-value { 
+            font-size: 8rem; 
+            line-height: 1; 
+            text-shadow: 0 0 20px rgba(79, 70, 229, 0.8);
+        }
+
+        /* Grid Layout untuk Nama Siswa */
+        body.projector-mode #attendee-list {
+            padding: 2rem;
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(350px, 1fr)); /* Responsif Grid */
+            gap: 1.5rem;
+            align-content: start;
+            overflow-y: auto;
+        }
+        
+        /* Kartu Siswa di Layar Besar */
+        body.projector-mode .student-card {
+            padding: 1.5rem;
+            border: 2px solid #334155;
+            background: #1e293b;
+            border-radius: 1.5rem;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.5);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            animation: popIn 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+        
+        /* Warna Kartu Berbeda Berdasarkan Status di Layar Besar */
+        body.projector-mode .student-card[data-status="Terlambat"] { border-color: #f97316; background: rgba(249, 115, 22, 0.1); }
+        body.projector-mode .student-card[data-status="Tepat Waktu"] { border-color: #10b981; background: rgba(16, 185, 129, 0.1); }
+        body.projector-mode .student-card[data-status="Hadir"] { border-color: #10b981; background: rgba(16, 185, 129, 0.1); }
+        body.projector-mode .student-card[data-status="Sakit"] { border-color: #3b82f6; background: rgba(59, 130, 246, 0.1); }
+        body.projector-mode .student-card[data-status="Izin"] { border-color: #6366f1; background: rgba(99, 102, 241, 0.1); }
+
+        body.projector-mode .student-name { font-size: 1.8rem; color: #f8fafc; font-weight: 800; letter-spacing: 0.025em; }
+        body.projector-mode .student-info { font-size: 1.2rem; color: #cbd5e1; font-family: 'Courier New', monospace; font-weight: bold; }
+        
+        /* FIX: Tombol Exit selalu muncul di mode projector */
+        body.projector-mode #exit-projector { display: block !important; }
+
+        @keyframes popIn {
+            0% { opacity: 0; transform: scale(0.5) translateY(20px); }
+            100% { opacity: 1; transform: scale(1) translateY(0); }
+        }
+    </style>
+</head>
+<body class="bg-slate-900 text-white min-h-screen">
+
+    <!-- LOGIN SCREEN -->
+    <div id="view-login" class="view-section active flex-col items-center justify-center min-h-screen p-4 bg-indigo-900">
+        <div class="bg-white p-8 rounded-3xl shadow-2xl w-full max-w-sm text-slate-800 text-center">
+            <h2 class="text-2xl font-bold text-indigo-900 mb-2">Admin Piket</h2>
+            <p class="text-xs text-slate-400 mb-6">Database Pusat: Manajemen Siswa</p>
+            <form onsubmit="picketApp.login(event)">
+                <input type="password" id="admin-pin" placeholder="PIN Admin (Default: 1234)"
+                    class="w-full p-4 border-2 border-slate-100 rounded-2xl mb-4 text-center text-lg outline-none focus:ring-4 focus:ring-indigo-100 focus:border-indigo-500 transition-all">
+                <button type="submit" class="w-full bg-indigo-600 text-white py-4 rounded-2xl font-bold hover:bg-indigo-700 transition shadow-lg shadow-indigo-200">
+                    Masuk Dashboard
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- MAIN DASHBOARD -->
+    <div id="view-dashboard" class="view-section flex-col md:flex-row min-h-screen overflow-hidden relative">
+        
+        <!-- SIDEBAR -->
+        <div id="sidebar" class="w-full md:w-1/3 p-6 flex flex-col border-r border-slate-700 bg-slate-900 z-10 shadow-xl transition-all">
+            <div class="flex justify-between items-center mb-8">
+                <button onclick="picketApp.logout()" class="p-2 text-slate-400 hover:text-white transition"><i class="ph ph-sign-out text-2xl"></i></button>
+                <div class="flex gap-2">
+                    <button onclick="picketApp.toggleProjectorMode()" class="px-3 py-2 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 transition flex items-center gap-2 text-sm font-bold shadow-lg shadow-indigo-500/30">
+                        <i class="ph ph-monitor-play text-lg"></i> Layar Siswa
+                    </button>
+                    <button onclick="picketApp.openSettings()" class="p-2 bg-slate-800 rounded-xl hover:bg-slate-700 transition"><i class="ph ph-gear text-xl"></i></button>
+                </div>
+            </div>
+
+            <div class="flex-1 flex flex-col items-center justify-center text-center space-y-6">
+                <!-- TOKEN DISPLAY -->
+                <div class="bg-white/5 p-8 rounded-[3rem] border border-white/10 shadow-[0_0_50px_rgba(79,70,229,0.15)] relative overflow-hidden">
+                    <div class="absolute inset-0 bg-gradient-to-br from-indigo-500/10 to-purple-500/10"></div>
+                    <p class="text-indigo-300 text-xs font-bold uppercase tracking-[0.3em] mb-2">Kode Token</p>
+                    <div id="display-token" class="text-8xl md:text-9xl font-mono font-black text-white tracking-widest drop-shadow-2xl">----</div>
+                </div>
+
+                <!-- TIMER & CONTROL -->
+                <div class="w-full max-w-xs space-y-2">
+                    <div class="flex justify-between text-xs font-mono text-slate-400">
+                        <span>Refresh: <span id="timer-text" class="text-white font-bold">10</span>s</span>
+                        <span id="status-indicator" class="text-green-400 flex items-center gap-1"><span class="w-2 h-2 bg-green-400 rounded-full animate-pulse"></span> AKTIF</span>
+                    </div>
+                    <div class="w-full bg-slate-800 rounded-full h-3 overflow-hidden border border-slate-700">
+                        <div id="timer-bar" class="h-full bg-indigo-500 transition-all duration-1000 ease-linear" style="width: 100%"></div>
+                    </div>
+                </div>
+
+                <div class="w-full max-w-xs bg-slate-800/50 p-4 rounded-2xl border border-slate-700/50 backdrop-blur-sm">
+                    <div class="flex items-center gap-3">
+                        <div class="flex-1">
+                            <label class="text-[10px] text-slate-500 uppercase font-bold block mb-1">Jeda (Detik)</label>
+                            <input type="number" id="input-interval" value="10" min="5" max="60" 
+                                class="w-full bg-slate-900 border border-slate-700 rounded-lg py-2 px-3 text-center font-mono font-bold text-white focus:border-indigo-500 outline-none"
+                                onchange="picketApp.updateInterval()">
+                        </div>
+                        <button id="btn-toggle-timer" onclick="picketApp.toggleTokenLoop()" class="h-12 w-12 flex items-center justify-center rounded-xl bg-red-500/20 text-red-400 border border-red-500/50 hover:bg-red-50 hover:text-white transition-all shadow-lg">
+                            <i class="ph ph-pause-circle text-2xl"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- MAIN CONTENT (Added ID for CSS targeting) -->
+        <div id="main-content-area" class="w-full md:w-2/3 flex flex-col bg-slate-800 shadow-2xl overflow-hidden relative">
+            
+            <!-- BUTTON EXIT PROJECTOR (Hidden by default) -->
+            <button id="exit-projector" onclick="picketApp.toggleProjectorMode()" class="hidden absolute top-6 right-6 z-[60] bg-red-600 hover:bg-red-700 text-white px-6 py-3 rounded-xl backdrop-blur text-lg font-bold border border-white/20 transition shadow-xl">
+                <i class="ph ph-x-circle mr-2"></i> Keluar Layar Penuh
+            </button>
+
+            <!-- TABS -->
+            <div id="tab-container" class="flex border-b border-slate-700 bg-slate-900/50 overflow-x-auto">
+                <button onclick="picketApp.switchMainTab('live')" id="tab-live" class="tab-btn flex-1 min-w-[100px] py-4 text-sm font-bold border-b-2 border-indigo-500 text-indigo-400">Monitor</button>
+                <button onclick="picketApp.switchMainTab('statistics')" id="tab-statistics" class="tab-btn flex-1 min-w-[100px] py-4 text-sm font-bold border-b-2 border-transparent text-slate-500 hover:text-white transition">Statistik</button>
+                <button onclick="picketApp.switchMainTab('class-report')" id="tab-class-report" class="tab-btn flex-1 min-w-[100px] py-4 text-sm font-bold border-b-2 border-transparent text-slate-500 hover:text-white transition">Laporan</button>
+                <button onclick="picketApp.switchMainTab('data-student')" id="tab-data-student" class="tab-btn flex-1 min-w-[100px] py-4 text-sm font-bold border-b-2 border-transparent text-slate-500 hover:text-white transition">Data Siswa</button>
+            </div>
+
+            <!-- LIVE MONITOR -->
+            <div id="content-live" class="flex-1 flex flex-col overflow-hidden relative">
+                
+                <!-- PROJECTOR HEADER (Hidden by default, visible in projector mode) -->
+                <div id="projector-header" class="hidden flex-col items-center justify-center p-8 bg-gradient-to-b from-indigo-900 to-slate-900 border-b border-slate-700 shadow-2xl">
+                    <h1 class="text-3xl font-bold text-white mb-4 tracking-tight">PRESENSI SISWA MASUK</h1>
+                    <div class="flex items-center gap-6 bg-white/5 px-8 py-4 rounded-3xl border border-white/10 backdrop-blur-sm">
+                        <span class="text-slate-400 font-bold uppercase tracking-widest text-sm">TOKEN SAAT INI:</span>
+                        <span id="projector-token-value" class="text-6xl font-mono font-black text-white tracking-[0.2em] drop-shadow-lg">----</span>
+                    </div>
+                </div>
+
+                <!-- Floating Action Button for Manual Input -->
+                <button id="btn-manual-input" onclick="picketApp.openManualInputModal()" class="absolute bottom-6 right-6 z-20 bg-indigo-600 hover:bg-indigo-700 text-white rounded-full p-4 shadow-2xl flex items-center gap-2 transition-transform hover:scale-105">
+                    <i class="ph ph-user-plus text-xl"></i>
+                    <span class="font-bold text-sm pr-2">Input Manual</span>
+                </button>
+
+                <div id="live-stats-bar" class="p-6 grid grid-cols-4 gap-4">
+                    <div class="bg-slate-900/50 p-4 rounded-2xl border border-slate-700"><p class="text-[10px] text-slate-500 uppercase font-bold">Hadir</p><p id="stat-total" class="text-2xl font-bold">0</p></div>
+                    <div class="bg-emerald-900/20 p-4 rounded-2xl border border-emerald-900/30"><p class="text-[10px] text-emerald-500 uppercase font-bold">Tepat</p><p id="stat-ontime" class="text-2xl font-bold text-emerald-400">0</p></div>
+                    <div class="bg-orange-900/20 p-4 rounded-2xl border border-orange-900/30"><p class="text-[10px] text-orange-500 uppercase font-bold">Telat</p><p id="stat-late" class="text-2xl font-bold text-orange-400">0</p></div>
+                    <div class="bg-blue-900/20 p-4 rounded-2xl border border-blue-900/30"><p class="text-[10px] text-blue-500 uppercase font-bold">Izin/Skt</p><p id="stat-permit" class="text-2xl font-bold text-blue-400">0</p></div>
+                </div>
+                <div id="attendee-list" class="flex-1 overflow-y-auto p-4 space-y-2 custom-scrollbar pb-24">
+                    <div class="text-center text-slate-600 mt-20 italic">Menunggu presensi...</div>
+                </div>
+            </div>
+
+            <!-- STATISTICS (NEW) -->
+            <div id="content-statistics" class="flex-1 hidden flex-col overflow-y-auto custom-scrollbar p-6 space-y-6">
+                
+                <!-- ROW 1: Charts -->
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <!-- Bar Chart: Late Per Month -->
+                    <div class="bg-slate-900/50 p-6 rounded-3xl border border-slate-700 shadow-lg">
+                        <div class="flex justify-between items-center mb-4">
+                            <h3 class="font-bold text-orange-400 flex items-center gap-2">
+                                <i class="ph ph-trend-up"></i> Tren Keterlambatan
+                            </h3>
+                            <span class="text-[10px] bg-slate-800 px-2 py-1 rounded border border-slate-600">Per Bulan</span>
+                        </div>
+                        <div class="chart-container">
+                            <canvas id="chartLateMonth"></canvas>
+                        </div>
+                    </div>
+
+                    <!-- Pie Chart: Daily Distribution -->
+                    <div class="bg-slate-900/50 p-6 rounded-3xl border border-slate-700 shadow-lg flex flex-col">
+                        <div class="flex justify-between items-center mb-4">
+                            <h3 class="font-bold text-indigo-400 flex items-center gap-2">
+                                <i class="ph ph-chart-pie-slice"></i> Komposisi Kehadiran
+                            </h3>
+                            <span class="text-[10px] bg-slate-800 px-2 py-1 rounded border border-slate-600">Hari Ini</span>
+                        </div>
+                        <div class="chart-container flex items-center justify-center">
+                            <canvas id="chartDistribution"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ROW 2: Top Lists -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 pb-10">
+                    <!-- Top Frequency -->
+                    <div class="bg-slate-900/50 p-6 rounded-3xl border border-slate-700">
+                        <h4 class="text-sm font-bold text-white mb-4 uppercase tracking-wider border-b border-slate-700 pb-2">
+                            🏆 Top 10 Sering Terlambat
+                        </h4>
+                        <div id="list-top-freq" class="space-y-3">
+                            <div class="text-center text-slate-600 text-xs italic">Memuat data...</div>
+                        </div>
+                    </div>
+
+                    <!-- Top Duration -->
+                    <div class="bg-slate-900/50 p-6 rounded-3xl border border-slate-700">
+                        <h4 class="text-sm font-bold text-white mb-4 uppercase tracking-wider border-b border-slate-700 pb-2">
+                            ⏳ Top 10 Durasi Terlama
+                        </h4>
+                        <div id="list-top-duration" class="space-y-3">
+                             <div class="text-center text-slate-600 text-xs italic">Memuat data...</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- CLASS REPORT -->
+            <div id="content-class-report" class="flex-1 hidden flex-col overflow-hidden p-6 space-y-6">
+                <div class="flex gap-4 items-end bg-slate-900/30 p-4 rounded-2xl border border-slate-700">
+                    <div class="flex-1">
+                        <label class="block text-[10px] font-bold text-slate-500 uppercase mb-2">Pilih Kelas</label>
+                        <select id="report-class-select" class="w-full bg-slate-800 border border-slate-700 rounded-xl p-3 text-white outline-none focus:ring-2 focus:ring-indigo-500">
+                            <option value="">-- Memuat Kelas --</option>
+                        </select>
+                    </div>
+                    <button onclick="picketApp.generateClassReport()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-3 rounded-xl font-bold transition">Tampilkan</button>
+                </div>
+                <div id="class-report-result" class="flex-1 overflow-y-auto space-y-4 hidden custom-scrollbar">
+                    <div class="grid grid-cols-4 gap-4">
+                        <div class="p-4 bg-slate-900 rounded-2xl text-center"><span id="res-total" class="block text-2xl font-bold">0</span><span class="text-[10px] text-slate-500">Siswa</span></div>
+                        <div class="p-4 bg-emerald-900/20 rounded-2xl text-center"><span id="res-hadir" class="block text-2xl font-bold text-emerald-400">0</span><span class="text-[10px] text-emerald-500">Hadir</span></div>
+                        <div class="p-4 bg-blue-900/20 rounded-2xl text-center"><span id="res-izin" class="block text-2xl font-bold text-blue-400">0</span><span class="text-[10px] text-blue-500">Izin</span></div>
+                        <div class="p-4 bg-red-900/20 rounded-2xl text-center"><span id="res-alpha" class="block text-2xl font-bold text-red-400">0</span><span class="text-[10px] text-red-500">Alpha</span></div>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 pb-10">
+                        <div class="bg-slate-900/50 p-4 rounded-2xl border border-slate-700"><h4 class="text-xs font-bold text-red-400 uppercase mb-4">Siswa Alpha</h4><div id="list-alpha" class="space-y-2 text-sm text-slate-300"></div></div>
+                        <div class="bg-slate-900/50 p-4 rounded-2xl border border-slate-700"><h4 class="text-xs font-bold text-blue-400 uppercase mb-4">Siswa Izin</h4><div id="list-izin" class="space-y-2 text-sm text-slate-300"></div></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- DATA STUDENT -->
+            <div id="content-data-student" class="flex-1 hidden flex-col overflow-hidden p-6 space-y-6">
+                <div class="bg-slate-900/30 p-6 rounded-3xl border border-slate-700 space-y-6">
+                    <div class="flex justify-between items-center">
+                        <h3 class="font-bold text-indigo-400 flex items-center gap-2"><i class="ph ph-database"></i> Data Siswa Pusat (<span id="count-students">0</span>)</h3>
+                        <div class="text-xs text-slate-500 bg-slate-800 px-3 py-1 rounded-lg border border-slate-600">*Read Only</div>
+                    </div>
+                    <div class="relative">
+                        <i class="ph ph-magnifying-glass absolute left-4 top-1/2 -translate-y-1/2 text-slate-500"></i>
+                        <input type="text" id="search-student" oninput="picketApp.filterStudents()" placeholder="Cari Nama atau NIS..." class="w-full bg-slate-800 border border-slate-700 rounded-2xl p-4 pl-12 text-sm outline-none focus:ring-2 focus:ring-indigo-500">
+                    </div>
+                </div>
+                <div id="student-table" class="flex-1 overflow-y-auto space-y-2 custom-scrollbar pr-2 pb-10">
+                    <div class="text-center text-slate-600 mt-20 italic">Memuat data...</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL EDIT STATUS -->
+    <div id="modal-edit" class="hidden fixed inset-0 z-[120] modal-overlay flex items-center justify-center p-4">
+        <div class="bg-white text-slate-800 rounded-3xl shadow-2xl w-full max-w-sm overflow-hidden animate-bounce-in">
+            <div class="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+                <h3 class="font-bold text-slate-800">Ubah Status Kehadiran</h3>
+                <button onclick="picketApp.closeModal('modal-edit')" class="text-slate-400 hover:text-red-500"><i class="ph ph-x text-2xl"></i></button>
+            </div>
+            <div class="p-6 space-y-4">
+                <div class="text-center">
+                    <h4 id="edit-student-name" class="font-bold text-lg text-slate-900">Nama Siswa</h4>
+                    <p id="edit-student-nis" class="text-xs text-slate-500 font-mono">NIS: 12345</p>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-400 uppercase mb-2">Status Baru</label>
+                    <div class="grid grid-cols-2 gap-2">
+                        <button onclick="picketApp.selectStatus('Tepat Waktu')" class="status-opt p-3 rounded-xl border border-slate-200 text-sm font-bold hover:bg-emerald-50 hover:border-emerald-500 text-emerald-600 transition">Hadir (Tepat)</button>
+                        <button onclick="picketApp.selectStatus('Terlambat')" class="status-opt p-3 rounded-xl border border-slate-200 text-sm font-bold hover:bg-orange-50 hover:border-orange-500 text-orange-600 transition">Terlambat</button>
+                        <button onclick="picketApp.selectStatus('s')" class="status-opt p-3 rounded-xl border border-slate-200 text-sm font-bold hover:bg-blue-50 hover:border-blue-500 text-blue-600 transition">Sakit</button>
+                        <button onclick="picketApp.selectStatus('i')" class="status-opt p-3 rounded-xl border border-slate-200 text-sm font-bold hover:bg-blue-50 hover:border-blue-500 text-blue-600 transition">Izin</button>
+                    </div>
+                    <button onclick="picketApp.selectStatus('alpha')" class="mt-2 w-full p-3 rounded-xl border border-red-200 text-sm font-bold hover:bg-red-50 hover:border-red-500 text-red-600 transition flex items-center justify-center gap-2">
+                        <i class="ph ph-trash"></i> Hapus (Alpha)
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL MANUAL INPUT (NEW) -->
+    <div id="modal-manual" class="hidden fixed inset-0 z-[120] modal-overlay flex items-center justify-center p-4">
+        <div class="bg-white text-slate-800 rounded-3xl shadow-2xl w-full max-w-sm overflow-hidden animate-bounce-in flex flex-col max-h-[80vh]">
+            <div class="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+                <h3 class="font-bold text-slate-800">Input Manual Siswa</h3>
+                <button onclick="picketApp.closeModal('modal-manual')" class="text-slate-400 hover:text-red-500"><i class="ph ph-x text-2xl"></i></button>
+            </div>
+            <div class="p-6 space-y-4 flex-1 overflow-y-auto">
+                <div>
+                    <label class="block text-xs font-bold text-slate-400 uppercase mb-2">Cari Siswa</label>
+                    <input type="text" id="manual-search-input" oninput="picketApp.searchManualStudent()" 
+                        class="w-full bg-slate-100 border border-slate-200 rounded-xl p-3 text-sm focus:border-indigo-500 outline-none" 
+                        placeholder="Ketik Nama atau NIS (tanpa titik)...">
+                    <p class="text-[10px] text-slate-400 mt-1">*Cukup ketik angka (misal: 242510), sistem otomatis mencocokkan.</p>
+                    <div id="manual-search-results" class="mt-2 space-y-1 max-h-40 overflow-y-auto hidden border border-slate-100 rounded-xl p-1 bg-slate-50">
+                        <!-- Search Results -->
+                    </div>
+                </div>
+                
+                <div id="manual-selected-container" class="hidden text-center bg-indigo-50 p-4 rounded-xl border border-indigo-100">
+                    <p class="text-xs text-indigo-400 font-bold uppercase mb-1">Siswa Terpilih</p>
+                    <h4 id="manual-selected-name" class="font-bold text-lg text-indigo-900">Nama</h4>
+                    <p id="manual-selected-nis" class="text-xs text-slate-500 font-mono">NIS</p>
+                </div>
+
+                <div id="manual-action-buttons" class="hidden">
+                    <label class="block text-xs font-bold text-slate-400 uppercase mb-2">Pilih Status Kehadiran</label>
+                    <div class="grid grid-cols-2 gap-3">
+                        <button onclick="picketApp.submitManualAttendance('Tepat Waktu')" class="p-4 rounded-xl bg-emerald-100 text-emerald-700 border border-emerald-200 font-bold hover:bg-emerald-200 transition">
+                            Hadir (Tepat)
+                        </button>
+                        <button onclick="picketApp.submitManualAttendance('Terlambat')" class="p-4 rounded-xl bg-orange-100 text-orange-700 border border-orange-200 font-bold hover:bg-orange-200 transition">
+                            Terlambat
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL BUKTI & ZOOM -->
+    <div id="modal-proof" class="hidden fixed inset-0 z-[130] bg-black/95 flex flex-col h-screen w-screen">
+        <div class="absolute top-4 right-4 z-50 flex gap-4">
+            <div class="bg-slate-800/80 backdrop-blur rounded-full p-1 flex gap-1">
+                <button onclick="picketApp.zoomIn()" class="p-3 text-white hover:bg-white/20 rounded-full"><i class="ph ph-plus"></i></button>
+                <button onclick="picketApp.resetZoom()" class="p-3 text-white hover:bg-white/20 rounded-full text-xs font-bold">RESET</button>
+                <button onclick="picketApp.zoomOut()" class="p-3 text-white hover:bg-white/20 rounded-full"><i class="ph ph-minus"></i></button>
+            </div>
+            <button onclick="picketApp.closeModal('modal-proof')" class="p-3 bg-red-600 hover:bg-red-700 text-white rounded-full shadow-lg"><i class="ph ph-x text-xl"></i></button>
+        </div>
+        <div class="zoom-container" onwheel="picketApp.handleWheel(event)">
+            <img id="proof-image" src="" class="zoom-content" alt="Bukti Izin">
+        </div>
+        <div class="absolute bottom-10 left-0 right-0 text-center pointer-events-none">
+            <span id="proof-caption" class="bg-black/50 text-white px-4 py-2 rounded-full text-sm backdrop-blur">Keterangan Izin</span>
+        </div>
+    </div>
+
+    <!-- SETTINGS MODAL -->
+    <div id="modal-settings" class="hidden fixed inset-0 z-[100] modal-overlay flex items-center justify-center p-4">
+        <div class="bg-white text-slate-800 rounded-3xl shadow-2xl w-full max-w-md p-8">
+            <div class="flex justify-between items-center mb-6">
+                <h3 class="text-xl font-bold text-indigo-900">Pengaturan Piket</h3>
+                <button onclick="picketApp.toggleModal('modal-settings', false)" class="text-slate-400 hover:text-red-500"><i class="ph ph-x text-2xl"></i></button>
+            </div>
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-xs font-bold text-slate-500 uppercase mb-2">Batas Jam Masuk (WIB)</label>
+                    <input type="time" id="setting-late-time" class="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl text-xl font-mono text-center">
+                </div>
+                <button onclick="picketApp.saveSettings()" class="w-full bg-indigo-600 text-white py-4 rounded-2xl font-bold shadow-lg shadow-indigo-100">Simpan Konfigurasi</button>
+                
+                <!-- NEW MAINTENANCE SECTION -->
+                <div class="pt-4 border-t border-slate-100 mt-4">
+                    <label class="block text-xs font-bold text-slate-400 uppercase mb-2">Pemeliharaan Data</label>
+                    <button onclick="picketApp.cleanOldEvidence()" class="w-full py-3 bg-red-50 text-red-600 font-bold rounded-xl border border-red-100 hover:bg-red-100 transition text-sm flex items-center justify-center gap-2">
+                        <i class="ph ph-trash"></i> Hapus Bukti Izin (>30 Hari)
+                    </button>
+                    <p class="text-[10px] text-slate-400 mt-2 text-center">Menghapus foto izin lama untuk menghemat penyimpanan.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js';
+        import { getAuth, signInAnonymously, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js';
+        import { getFirestore, collection, doc, setDoc, getDoc, getDocs, deleteDoc, onSnapshot, serverTimestamp, query, orderBy } from 'https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js';
+
+        // CONFIG MENGGUNAKAN 'APLIKASI-ULANGAN-01' (PUSAT)
+        const firebaseConfig = {
+            apiKey: "AIzaSyAwIwimlyrE4qQqYa2gA8Pfygd59USsveQ",
+            authDomain: "aplikasi-ulangan-01.firebaseapp.com",
+            projectId: "aplikasi-ulangan-01",
+            storageBucket: "aplikasi-ulangan-01.firebasestorage.app",
+            messagingSenderId: "409085062439",
+            appId: "1:409085062439:web:280589d1a3e12e7b980d02",
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+
+        // PATHS
+        const APP_ID = 'presensi-sekolah-terintegrasi'; 
+        const PATH_CONFIG = `artifacts/${APP_ID}/public/data/config`;
+        const PATH_ATTENDANCE = `artifacts/${APP_ID}/public/data/attendance`;
+        const PATH_IZIN = `artifacts/${APP_ID}/public/data/izin_global`;
+
+        class PicketApp {
+            constructor() {
+                this.lateThreshold = "07:00";
+                this.studentMap = new Map();
+                this.classes = new Set();
+                this.user = null;
+                this.unsubscribes = [];
+                
+                // Token & Control
+                this.tokenIntervalTime = 10;
+                this.isTokenRunning = true;
+                this.tokenTimer = null;
+                this.countdownTimer = null;
+                this.keepAliveTimer = null; 
+
+                // Edit & Zoom State
+                this.currentEditItem = null;
+                this.zoomScale = 1;
+                
+                // Manual Input State
+                this.manualSelectedStudent = null;
+
+                // Projector Mode State
+                this.isProjectorMode = false;
+
+                // Charts Instances
+                this.chartLateMonth = null;
+                this.chartDistribution = null;
+                this.statsDataCache = null;
+
+                this.initAuth();
+            }
+
+            async initAuth() {
+                try {
+                    await signInAnonymously(auth);
+                    onAuthStateChanged(auth, (user) => {
+                        this.user = user;
+                        if (user) this.initSystem();
+                    });
+                } catch (error) { console.error("Auth Failed:", error); }
+            }
+
+            async initSystem() {
+                if (!this.user) return;
+                await this.fetchSettings();
+                await this.fetchStudents();
+                // START LISTENING TO SESSION IMMEDIATELY FOR SYNC (FIX POIN 1)
+                this.setupSessionListener();
+            }
+
+            login(e) {
+                e.preventDefault();
+                if(document.getElementById('admin-pin').value === '1234') {
+                    document.getElementById('view-login').classList.remove('active');
+                    document.getElementById('view-dashboard').classList.add('active');
+                    this.switchMainTab('live'); // Set default tab to avoid null error
+                    this.startTokenLoop();
+                    this.startLiveMonitor();
+                } else { alert('PIN Admin Salah!'); }
+            }
+
+            logout() { 
+                this.unsubscribes.forEach(unsub => unsub());
+                location.reload(); 
+            }
+
+            async fetchSettings() {
+                if (!this.user) return;
+                try {
+                    const snap = await getDoc(doc(db, PATH_CONFIG, 'settings'));
+                    if(snap.exists()) {
+                        this.lateThreshold = snap.data().lateThreshold || "07:00";
+                        document.getElementById('setting-late-time').value = this.lateThreshold;
+                    }
+                } catch(e) { console.error("Fetch Settings Error:", e); }
+            }
+
+            async fetchStudents() {
+                if (!this.user) return;
+                try {
+                    const snap = await getDocs(collection(db, 'siswa'));
+                    this.studentMap.clear();
+                    this.classes.clear();
+                    
+                    snap.forEach(d => {
+                        const data = d.data();
+                        this.studentMap.set(d.id, data);
+                        if(data.kelas) this.classes.add(data.kelas);
+                    });
+
+                    this.updateStudentUI();
+                    this.updateClassSelect();
+                } catch(e) { 
+                    console.error("Fetch Student Error:", e); 
+                    document.getElementById('student-table').innerHTML = '<div class="text-center text-red-400 p-4">Gagal memuat data siswa. Cek koneksi.</div>';
+                }
+            }
+
+            updateStudentUI() {
+                document.getElementById('count-students').innerText = this.studentMap.size;
+                this.renderStudentList();
+            }
+
+            updateClassSelect() {
+                const select = document.getElementById('report-class-select');
+                select.innerHTML = '<option value="">-- Pilih Kelas --</option>';
+                Array.from(this.classes).sort().forEach(c => {
+                    const opt = document.createElement('option');
+                    opt.value = c; opt.innerText = c;
+                    select.appendChild(opt);
+                });
+            }
+
+            renderStudentList() {
+                const container = document.getElementById('student-table');
+                const filter = document.getElementById('search-student').value.toLowerCase();
+                
+                const filtered = Array.from(this.studentMap.entries())
+                    .filter(([nis, s]) => (s.nama || "").toLowerCase().includes(filter) || nis.includes(filter))
+                    .sort((a,b) => (a[1].nama || "").localeCompare(b[1].nama || ""))
+                    .slice(0, 50);
+
+                if (filtered.length === 0) {
+                    container.innerHTML = '<div class="text-center text-slate-600 mt-10 italic text-sm">Data tidak ditemukan.</div>';
+                    return;
+                }
+
+                container.innerHTML = filtered.map(([nis, s]) => `
+                    <div class="p-4 bg-slate-900/40 border border-slate-700 rounded-2xl flex justify-between items-center group hover:bg-slate-700/30 transition-all">
+                        <div>
+                            <p class="font-bold text-sm text-slate-100 uppercase">${s.nama}</p>
+                            <p class="text-[10px] text-slate-500 font-mono tracking-widest">${nis} • KELAS ${s.kelas}</p>
+                        </div>
+                    </div>
+                `).join('');
+            }
+
+            filterStudents() { this.renderStudentList(); }
+
+            // --- TOKEN & TIMER CONTROL ---
+            updateInterval() {
+                const val = parseInt(document.getElementById('input-interval').value);
+                if (val >= 5) {
+                    this.tokenIntervalTime = val;
+                    if (this.isTokenRunning) {
+                        this.stopTokenLoop();
+                        this.startTokenLoop();
+                    }
+                }
+            }
+
+            toggleTokenLoop() {
+                this.isTokenRunning = !this.isTokenRunning;
+                const btn = document.getElementById('btn-toggle-timer');
+                const indicator = document.getElementById('status-indicator');
+                
+                if (this.isTokenRunning) {
+                    this.startTokenLoop();
+                    btn.innerHTML = '<i class="ph ph-pause-circle text-2xl"></i>';
+                    btn.className = "h-12 w-12 flex items-center justify-center rounded-xl bg-red-500/20 text-red-400 border border-red-500/50 hover:bg-red-50 hover:text-white transition-all shadow-lg";
+                    indicator.innerHTML = '<span class="w-2 h-2 bg-green-400 rounded-full animate-pulse"></span> AKTIF';
+                    indicator.className = "text-green-400 flex items-center gap-1";
+                } else {
+                    this.stopTokenLoop();
+                    this.startKeepAliveLoop(); 
+                    btn.innerHTML = '<i class="ph ph-play-circle text-2xl"></i>';
+                    btn.className = "h-12 w-12 flex items-center justify-center rounded-xl bg-green-500/20 text-green-400 border border-green-500/50 hover:bg-green-50 hover:text-white transition-all shadow-lg";
+                    indicator.innerHTML = '<span class="w-2 h-2 bg-red-400 rounded-full"></span> PAUSE';
+                    indicator.className = "text-red-400 flex items-center gap-1";
+                }
+            }
+
+            stopTokenLoop() {
+                if (this.tokenTimer) clearInterval(this.tokenTimer);
+                if (this.countdownTimer) clearInterval(this.countdownTimer);
+                if (this.keepAliveTimer) clearInterval(this.keepAliveTimer);
+            }
+            
+            startKeepAliveLoop() {
+                if (this.keepAliveTimer) clearInterval(this.keepAliveTimer);
+                const keepAliveAction = async () => {
+                    const currentToken = document.getElementById('display-token').innerText;
+                    if (currentToken === '----') return; 
+                    try {
+                        await setDoc(doc(db, PATH_CONFIG, 'session'), {
+                            currentToken: currentToken,
+                            lateThreshold: this.lateThreshold,
+                            updatedAt: serverTimestamp() 
+                        });
+                    } catch(e) { console.error("Keep Alive Error:", e); }
+                };
+                keepAliveAction();
+                this.keepAliveTimer = setInterval(keepAliveAction, 5000); 
+            }
+
+            async startTokenLoop() {
+                if (!this.user || !this.isTokenRunning) return;
+                this.stopTokenLoop(); 
+
+                const generateAndUpdate = async () => {
+                    if (!this.isTokenRunning) return;
+                    const token = Math.floor(1000 + Math.random() * 9000).toString();
+                    // NOTE: Removed setting innerText here, handled by listener
+                    
+                    try {
+                        await setDoc(doc(db, PATH_CONFIG, 'session'), {
+                            currentToken: token,
+                            lateThreshold: this.lateThreshold,
+                            updatedAt: serverTimestamp()
+                        });
+                    } catch(e) { console.error("Session Update Error:", e); }
+                };
+
+                generateAndUpdate();
+                this.tokenTimer = setInterval(generateAndUpdate, this.tokenIntervalTime * 1000);
+                this.countdownTimer = setInterval(() => {
+                    const t = document.getElementById('timer-text');
+                    let s = parseInt(t.innerText) - 1;
+                    if(s < 0) s = this.tokenIntervalTime; 
+                    t.innerText = s;
+                }, 1000);
+            }
+
+            // NEW: LISTENER FOR SYNC (WRITER/READER LOGIC)
+            setupSessionListener() {
+                onSnapshot(doc(db, PATH_CONFIG, 'session'), (doc) => {
+                    if(doc.exists()) {
+                        const data = doc.data();
+                        document.getElementById('display-token').innerText = data.currentToken || '----';
+                        document.getElementById('projector-token-value').innerText = data.currentToken || '----';
+                        
+                        // Sync Timer visualization (Optional visual sugar)
+                        if(this.isTokenRunning) {
+                             const bar = document.getElementById('timer-bar');
+                             bar.style.transition = 'none';
+                             bar.style.width = '100%';
+                             setTimeout(() => {
+                                 bar.style.transition = `width ${this.tokenIntervalTime}s linear`;
+                                 bar.style.width = '0%';
+                             }, 50);
+                             
+                             // Reset Countdown Text
+                             document.getElementById('timer-text').innerText = this.tokenIntervalTime;
+                             if(this.countdownTimer) clearInterval(this.countdownTimer);
+                             this.countdownTimer = setInterval(() => {
+                                const t = document.getElementById('timer-text');
+                                let s = parseInt(t.innerText) - 1;
+                                if(s < 0) s = this.tokenIntervalTime; 
+                                t.innerText = s;
+                             }, 1000);
+                        }
+                    }
+                });
+            }
+
+            // --- PROJECTOR MODE LOGIC (MODIFIED FOR SYNC) ---
+            toggleProjectorMode() {
+                this.isProjectorMode = !this.isProjectorMode;
+                document.body.classList.toggle('projector-mode', this.isProjectorMode);
+                
+                // Force switch to live monitor if entering projector mode
+                if (this.isProjectorMode) {
+                    this.switchMainTab('live');
+                    // STOP WRITING TO DB IN PROJECTOR MODE (BECOME READER)
+                    this.stopTokenLoop(); 
+                    this.isTokenRunning = false; // Stop logic
+                    // Update UI to show paused state on sidebar (though hidden)
+                    const btn = document.getElementById('btn-toggle-timer');
+                    const indicator = document.getElementById('status-indicator');
+                    btn.innerHTML = '<i class="ph ph-play-circle text-2xl"></i>';
+                    indicator.innerHTML = '<span class="w-2 h-2 bg-red-400 rounded-full"></span> PAUSE';
+
+                    // TRIGGER FULL SCREEN
+                    const elem = document.documentElement;
+                    if (elem.requestFullscreen) {
+                        elem.requestFullscreen().catch(err => {
+                            console.log(`Error attempting to enable full-screen mode: ${err.message} (${err.name})`);
+                        });
+                    }
+                } else {
+                    // EXIT FULL SCREEN
+                    if (document.exitFullscreen) {
+                        document.exitFullscreen();
+                    }
+                }
+            }
+
+            // --- LIVE MONITOR & EDIT LOGIC ---
+            startLiveMonitor() {
+                if (!this.user) return;
+                const today = new Date().toISOString().split('T')[0];
+                
+                const collAttendance = collection(db, PATH_ATTENDANCE);
+                const collIzin = collection(db, PATH_IZIN);
+
+                const unsubAttendance = onSnapshot(collAttendance, (snapAttendance) => {
+                    const attendanceData = snapAttendance.docs
+                        .map(d => ({...d.data(), id: d.id}))
+                        .filter(d => d.id.startsWith(today));
+
+                    const unsubIzin = onSnapshot(collIzin, (snapIzin) => {
+                        const izinData = snapIzin.docs
+                            .map(d => ({...d.data(), id: d.id, isIzin: true}))
+                            .filter(d => d.id.startsWith(today));
+
+                        const combined = [...attendanceData, ...izinData]
+                            .sort((a,b) => (b.timestamp?.seconds || 0) - (a.timestamp?.seconds || 0));
+                        
+                        this.renderLiveList(combined);
+                        this.statsDataCache = { attendance: combined, totalStudents: this.studentMap.size };
+                        if(!document.getElementById('content-statistics').classList.contains('hidden')){
+                            this.renderPieChart();
+                        }
+                    }, (err) => console.error("Izin error:", err));
+                    this.unsubscribes.push(unsubIzin);
+                }, (err) => console.error("Attendance error:", err));
+                this.unsubscribes.push(unsubAttendance);
+            }
+
+            // --- SEND WA FUNCTION (UPDATED) ---
+            async sendWA(phone, name, time, type = 'late', docId = null, isIzin = false) {
+                if (!phone) {
+                    phone = prompt("Nomor HP Wali Murid tidak ditemukan di database. Masukkan nomor HP (format: 628...):");
+                    if (!phone) return;
+                }
+                
+                if (phone.startsWith('08')) {
+                    phone = '62' + phone.substring(1);
+                }
+
+                let message = "";
+                
+                if (type === 'alpha') {
+                    message = `Yth. Wali Murid,\n\nKami informasikan bahwa siswa atas nama *${name}* *BELUM HADIR* di sekolah tanpa keterangan hingga pukul ${time} WIB.\n\nMohon konfirmasinya apakah siswa Sakit, Izin, atau ada kendala lain.\n\n- Admin Piket`;
+                } else if (type === 's') {
+                    message = `Yth. Wali Murid,\n\nKami telah menerima informasi bahwa siswa atas nama *${name}* hari ini *IZIN SAKIT*.\n\nSemoga lekas sembuh dan dapat kembali belajar. Terima kasih.\n\nTetapi jika hal tersebut tanpa sepengetahuan Bpk/Ibu, mohon segera hubungi anak Bpk/Ibu untuk memastikan keberadaannya.\n\nTerima kasih atas perhatian dan kerjasamanya\n\nAdmin Piket`;
+                } else if (type === 'i') {
+                    message = `Yth. Wali Murid,\n\nKami telah menerima informasi bahwa siswa atas nama *${name}* hari ini *IZIN TIDAK MASUK* dikarenakan keperluan keluarga/lainnya.\n\nTetapi jika hal tersebut tanpa sepengetahuan Bpk/Ibu, mohon segera hubungi anak Bpk/Ibu untuk memastikan keberadaannya.\n\nTerima kasih atas perhatian dan kerjasamanya\nAdmin Piket`;
+                } else {
+                    // Default: Late / Terlambat
+                    message = `Yth. Wali Murid,\n\nKami informasikan bahwa siswa atas nama *${name}* tercatat *TERLAMBAT* masuk sekolah pada pukul ${time} WIB.\n\nMohon kerjasamanya agar siswa dapat hadir tepat waktu. Terima kasih.\n\n- Admin Piket`;
+                }
+                
+                const url = `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
+                window.open(url, '_blank');
+
+                // Update Status WA Sent
+                if (docId) {
+                    try {
+                        const collectionPath = isIzin ? PATH_IZIN : PATH_ATTENDANCE;
+                        await setDoc(doc(db, collectionPath, docId), { wa_sent: true }, { merge: true });
+                    } catch (e) {
+                        console.error("Failed to update WA status", e);
+                    }
+                }
+            }
+
+            renderLiveList(data) {
+                const container = document.getElementById('attendee-list');
+                let h = 0, t = 0, p = 0;
+                
+                if (data.length === 0) {
+                    container.innerHTML = '<div class="text-center text-slate-600 mt-20 italic text-sm">Menunggu presensi...</div>';
+                } else {
+                    container.innerHTML = data.map(item => {
+                        if(item.isIzin) p++; else { h++; if(item.status === 'Terlambat') t++; }
+                        const student = this.studentMap.get(item.nis) || { nama: 'Siswa Tidak Dikenal', kelas: '-', no_hp: '', hp_ortu: '' };
+                        const isLate = item.status === 'Terlambat';
+                        const isIzin = item.isIzin;
+                        const timeStr = item.timestamp ? new Date(item.timestamp.seconds * 1000).toLocaleTimeString('id-ID', {hour:'2-digit', minute:'2-digit'}) : '--:--';
+                        
+                        const parentPhone = student.hp_ortu || student.no_hp || '';
+                        const itemStr = encodeURIComponent(JSON.stringify({...item, studentName: student.nama}));
+
+                        const statusBadge = isIzin 
+                            ? `<span class="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-blue-500/20 text-blue-400 border border-blue-500/30">${item.tipe === 's' ? 'SAKIT' : 'IZIN'}</span>`
+                            : `<span class="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${isLate ? 'bg-orange-500/20 text-orange-400 border border-orange-500/30' : 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'}">${item.status}</span>`;
+
+                        // WA Button logic (Updated with correct types and status check)
+                        let waType = 'late';
+                        let waTitle = 'Info Terlambat';
+                        if (isIzin) {
+                            waType = item.tipe; // 's' or 'i'
+                            waTitle = item.tipe === 's' ? 'Konfirmasi Sakit' : 'Konfirmasi Izin';
+                        }
+
+                        // Check if WA already sent
+                        const isWaSent = item.wa_sent === true;
+                        const waBtnColor = isWaSent 
+                            ? "bg-slate-700 text-slate-400 cursor-not-allowed" 
+                            : "bg-green-600/20 text-green-400 hover:bg-green-600 hover:text-white";
+                        const waIcon = isWaSent ? "ph-check" : "ph-whatsapp-logo";
+                        const waTooltip = isWaSent ? "WA Sudah Terkirim" : `Kirim WA: ${waTitle}`;
+                        const waAction = isWaSent ? "" : `onclick="picketApp.sendWA('${parentPhone}', '${student.nama}', '${timeStr}', '${waType}', '${item.id}', ${isIzin})"`
+
+                        // Hanya tampilkan tombol WA jika Terlambat atau Izin/Sakit (untuk konfirmasi)
+                        const showWaBtn = isLate || isIzin;
+
+                        const waButton = showWaBtn 
+                            ? `<button ${waAction} class="w-8 h-8 flex items-center justify-center ${waBtnColor} rounded-lg transition" title="${waTooltip}">
+                                <i class="ph ${waIcon} text-lg"></i>
+                               </button>` 
+                            : '';
+
+                        // IMPORTANT: Added 'admin-action' class to hide in projector mode
+                        // ADDED DATA ATTRIBUTE FOR STYLING IN PROJECTOR MODE
+                        const statusClass = isIzin ? (item.tipe === 's' ? 'Sakit' : 'Izin') : item.status;
+
+                        return `
+                            <div class="student-card p-3 bg-slate-900/40 border border-slate-700/50 rounded-xl flex items-center justify-between hover:bg-slate-800 transition group mb-2" data-status="${statusClass}">
+                                <div class="flex-1 min-w-0 pr-4">
+                                    <div class="flex items-center gap-2 mb-0.5">
+                                        <p class="student-name font-bold text-sm text-slate-100 truncate">${student.nama}</p>
+                                        ${statusBadge}
+                                    </div>
+                                    <div class="student-info flex items-center text-[10px] text-slate-500 font-mono gap-2">
+                                        <span>${item.nis}</span>
+                                        <span class="w-1 h-1 bg-slate-600 rounded-full"></span>
+                                        <span>${student.kelas}</span>
+                                        <span class="w-1 h-1 bg-slate-600 rounded-full"></span>
+                                        <span>${timeStr}</span>
+                                    </div>
+                                </div>
+                                
+                                <div class="admin-action flex items-center gap-1 opacity-100 transition-opacity">
+                                    ${waButton}
+                                    ${isIzin && item.foto ? `
+                                        <button onclick="picketApp.viewProof('${item.foto}', '${item.alasan}')" class="w-8 h-8 flex items-center justify-center bg-slate-700 hover:bg-slate-600 text-white rounded-lg transition" title="Lihat Bukti">
+                                            <i class="ph ph-eye"></i>
+                                        </button>` : ''}
+                                    <button onclick="picketApp.openEditModal('${itemStr}')" class="w-8 h-8 flex items-center justify-center bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg transition" title="Edit Status">
+                                        <i class="ph ph-pencil-simple"></i>
+                                    </button>
+                                    <button onclick="picketApp.deleteAttendance('${item.id}', ${isIzin})" class="w-8 h-8 flex items-center justify-center bg-red-600/20 text-red-400 hover:bg-red-600 hover:text-white rounded-lg transition" title="Hapus">
+                                        <i class="ph ph-trash"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        `;
+                    }).join('');
+                }
+
+                document.getElementById('stat-total').innerText = h;
+                document.getElementById('stat-ontime').innerText = h - t;
+                document.getElementById('stat-late').innerText = t;
+                document.getElementById('stat-permit').innerText = p;
+            }
+
+            // --- MANUAL INPUT LOGIC ---
+            openManualInputModal() {
+                document.getElementById('modal-manual').classList.remove('hidden');
+                document.getElementById('manual-search-input').value = '';
+                document.getElementById('manual-search-input').focus();
+                document.getElementById('manual-search-results').classList.add('hidden');
+                document.getElementById('manual-selected-container').classList.add('hidden');
+                document.getElementById('manual-action-buttons').classList.add('hidden');
+                this.manualSelectedStudent = null;
+            }
+
+            searchManualStudent() {
+                const keyword = document.getElementById('manual-search-input').value.toLowerCase();
+                const container = document.getElementById('manual-search-results');
+                
+                if (keyword.length < 2) {
+                    container.classList.add('hidden');
+                    return;
+                }
+
+                // SMART SEARCH LOGIC (IGNORE DOTS)
+                const cleanKeyword = keyword.replace(/[^a-zA-Z0-9]/g, '');
+
+                const matches = Array.from(this.studentMap.entries())
+                    .filter(([nis, s]) => {
+                        const cleanNis = nis.replace(/\./g, '');
+                        const nameMatch = (s.nama || "").toLowerCase().includes(keyword);
+                        const nisMatch = cleanNis.includes(cleanKeyword);
+                        return nameMatch || nisMatch;
+                    })
+                    .slice(0, 5); // Batasi 5 hasil
+
+                if (matches.length > 0) {
+                    container.innerHTML = matches.map(([nis, s]) => `
+                        <div onclick="picketApp.selectManualStudent('${nis}')" class="p-3 hover:bg-indigo-100 cursor-pointer rounded-lg border-b border-slate-100 last:border-0">
+                            <p class="font-bold text-sm text-slate-800">${s.nama}</p>
+                            <p class="text-[10px] text-slate-500 font-mono">${nis} - ${s.kelas}</p>
+                        </div>
+                    `).join('');
+                    container.classList.remove('hidden');
+                } else {
+                    container.innerHTML = '<div class="p-3 text-xs text-slate-400 italic text-center">Tidak ditemukan.</div>';
+                    container.classList.remove('hidden');
+                }
+            }
+
+            selectManualStudent(nis) {
+                const s = this.studentMap.get(nis);
+                if (!s) return;
+
+                this.manualSelectedStudent = { nis, ...s };
+                document.getElementById('manual-selected-name').innerText = s.nama;
+                document.getElementById('manual-selected-nis').innerText = `${nis} - ${s.kelas}`;
+                
+                document.getElementById('manual-search-results').classList.add('hidden');
+                document.getElementById('manual-search-input').value = '';
+                document.getElementById('manual-selected-container').classList.remove('hidden');
+                document.getElementById('manual-action-buttons').classList.remove('hidden');
+            }
+
+            async submitManualAttendance(status) {
+                if (!this.manualSelectedStudent) return;
+                
+                const { nis, nama, kelas } = this.manualSelectedStudent;
+                const today = new Date().toISOString().split('T')[0];
+                const docId = `${today}_${nis}`;
+
+                // Cek dulu apakah siswa sudah absen hari ini
+                try {
+                    const docSnap = await getDoc(doc(db, PATH_ATTENDANCE, docId));
+                    if (docSnap.exists()) {
+                        if(!confirm(`Siswa ${nama} sudah tercatat absen hari ini. Timpa data?`)) return;
+                    }
+
+                    await setDoc(doc(db, PATH_ATTENDANCE, docId), {
+                        nis, nama, kelas,
+                        status: status,
+                        timestamp: serverTimestamp(),
+                        method: 'manual' // Tandai sebagai input manual
+                    });
+
+                    this.closeModal('modal-manual');
+                    alert(`Berhasil input manual: ${nama} (${status})`);
+
+                } catch (e) {
+                    console.error("Manual input error:", e);
+                    alert("Gagal input manual: " + e.message);
+                }
+            }
+
+            // --- STATISTICS LOGIC ---
+            
+            async generateStatistics() {
+                try {
+                    const attendanceSnap = await getDocs(query(collection(db, PATH_ATTENDANCE)));
+                    
+                    const monthlyStats = {};
+                    const studentLateCount = {};
+                    const studentLateDuration = {};
+
+                    const thresholdParts = this.lateThreshold.split(':');
+                    const thresholdMinutes = parseInt(thresholdParts[0]) * 60 + parseInt(thresholdParts[1]);
+
+                    attendanceSnap.forEach(doc => {
+                        const data = doc.data();
+                        if (data.status === 'Terlambat' && data.timestamp) {
+                            const date = new Date(data.timestamp.seconds * 1000);
+                            const monthKey = date.toLocaleString('id-ID', { month: 'long' });
+                            
+                            // Monthly Stats
+                            monthlyStats[monthKey] = (monthlyStats[monthKey] || 0) + 1;
+
+                            // Freq Stats
+                            studentLateCount[data.nis] = (studentLateCount[data.nis] || 0) + 1;
+
+                            // Duration Stats
+                            const actualMinutes = date.getHours() * 60 + date.getMinutes();
+                            let diff = actualMinutes - thresholdMinutes;
+                            if (diff > 0) {
+                                studentLateDuration[data.nis] = (studentLateDuration[data.nis] || 0) + diff;
+                            }
+                        }
+                    });
+
+                    this.renderBarChart(monthlyStats);
+                    this.renderTopLists(studentLateCount, studentLateDuration);
+                    this.renderPieChart(); // Uses live cache
+
+                } catch (e) {
+                    console.error("Stats Error:", e);
+                }
+            }
+
+            renderBarChart(data) {
+                const ctx = document.getElementById('chartLateMonth').getContext('2d');
+                if (this.chartLateMonth) this.chartLateMonth.destroy();
+
+                const labels = Object.keys(data);
+                const values = Object.values(data);
+
+                // Create Gradient
+                const gradient = ctx.createLinearGradient(0, 0, 0, 400);
+                gradient.addColorStop(0, 'rgba(249, 115, 22, 0.8)'); // Orange
+                gradient.addColorStop(1, 'rgba(249, 115, 22, 0.1)');
+
+                this.chartLateMonth = new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            label: 'Jumlah Keterlambatan',
+                            data: values,
+                            backgroundColor: gradient,
+                            borderColor: '#f97316',
+                            borderWidth: 1,
+                            borderRadius: 8,
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { display: false },
+                            tooltip: { backgroundColor: '#1e293b', titleColor: '#fff', bodyColor: '#cbd5e1' }
+                        },
+                        scales: {
+                            y: { 
+                                beginAtZero: true, 
+                                grid: { color: '#334155' },
+                                ticks: { color: '#94a3b8' }
+                            },
+                            x: {
+                                grid: { display: false },
+                                ticks: { color: '#94a3b8' }
+                            }
+                        }
+                    }
+                });
+            }
+
+            renderPieChart() {
+                if (!this.statsDataCache) return;
+                
+                const ctx = document.getElementById('chartDistribution').getContext('2d');
+                if (this.chartDistribution) this.chartDistribution.destroy();
+
+                const { attendance, totalStudents } = this.statsDataCache;
+                
+                let hadir = 0, sakit = 0, izin = 0;
+                attendance.forEach(d => {
+                    if (d.isIzin) {
+                        if(d.tipe === 's') sakit++; else izin++;
+                    } else {
+                        hadir++; // Tepat & Telat counts as hadir physically
+                    }
+                });
+
+                const alpha = Math.max(0, totalStudents - (hadir + sakit + izin));
+
+                this.chartDistribution = new Chart(ctx, {
+                    type: 'doughnut',
+                    data: {
+                        labels: ['Hadir', 'Sakit', 'Izin', 'Alpha'],
+                        datasets: [{
+                            data: [hadir, sakit, izin, alpha],
+                            backgroundColor: [
+                                '#10b981', // Emerald (Hadir)
+                                '#3b82f6', // Blue (Sakit)
+                                '#6366f1', // Indigo (Izin)
+                                '#ef4444'  // Red (Alpha)
+                            ],
+                            borderWidth: 0,
+                            hoverOffset: 10
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        cutout: '60%',
+                        plugins: {
+                            legend: { 
+                                position: 'bottom',
+                                labels: { color: '#cbd5e1', padding: 20, usePointStyle: true }
+                            }
+                        }
+                    }
+                });
+            }
+
+            // --- EDIT STATUS & DELETE ---
+            openEditModal(itemStr) {
+                const item = JSON.parse(decodeURIComponent(itemStr));
+                this.currentEditItem = item;
+                document.getElementById('edit-student-name').innerText = item.studentName;
+                document.getElementById('edit-student-nis').innerText = "NIS: " + item.nis;
+                document.getElementById('modal-edit').classList.remove('hidden');
+            }
+
+            closeModal(id) { document.getElementById(id).classList.add('hidden'); }
+
+            async deleteAttendance(docId, isIzin) {
+                if(!confirm("Hapus data presensi ini? Siswa akan dianggap Alpha.")) return;
+                try {
+                    const collName = isIzin ? PATH_IZIN : PATH_ATTENDANCE;
+                    await deleteDoc(doc(db, collName, docId));
+                } catch(e) { alert("Gagal menghapus: " + e.message); }
+            }
+
+            async selectStatus(newStatus) {
+                if(!this.currentEditItem) return;
+                const { nis, id, isIzin } = this.currentEditItem;
+                const student = this.studentMap.get(nis) || {};
+                const today = new Date().toISOString().split('T')[0];
+                const docId = `${today}_${nis}`;
+
+                this.closeModal('modal-edit');
+
+                try {
+                    const oldColl = isIzin ? PATH_IZIN : PATH_ATTENDANCE;
+                    await deleteDoc(doc(db, oldColl, id));
+
+                    if (newStatus === 'alpha') return;
+
+                    if (newStatus === 's' || newStatus === 'i') {
+                        await setDoc(doc(db, PATH_IZIN, docId), {
+                            nis, nama: student.nama, kelas: student.kelas,
+                            tipe: newStatus, alasan: "Diubah oleh Admin Piket",
+                            timestamp: serverTimestamp()
+                        });
+                    } else {
+                        await setDoc(doc(db, PATH_ATTENDANCE, docId), {
+                            nis, nama: student.nama, kelas: student.kelas,
+                            status: newStatus,
+                            timestamp: serverTimestamp()
+                        });
+                    }
+                } catch(e) { alert("Gagal ubah status: " + e.message); }
+            }
+
+            // --- PROOF VIEWER & ZOOM ---
+            viewProof(url, caption) {
+                const img = document.getElementById('proof-image');
+                img.src = url;
+                document.getElementById('proof-caption').innerText = caption || "Bukti Izin";
+                this.resetZoom();
+                document.getElementById('modal-proof').classList.remove('hidden');
+            }
+
+            resetZoom() {
+                this.zoomScale = 1;
+                this.updateZoom();
+            }
+
+            zoomIn() { this.zoomScale += 0.2; this.updateZoom(); }
+            zoomOut() { if (this.zoomScale > 0.4) this.zoomScale -= 0.2; this.updateZoom(); }
+            
+            updateZoom() {
+                document.getElementById('proof-image').style.transform = `scale(${this.zoomScale})`;
+            }
+
+            handleWheel(e) {
+                e.preventDefault();
+                if (e.deltaY < 0) this.zoomIn(); else this.zoomOut();
+            }
+
+            // --- MAINTENANCE (DELETE OLD PROOFS) ---
+            async cleanOldEvidence() {
+                if (!this.user || !confirm("Yakin ingin menghapus data bukti izin yang lebih dari 30 hari? Tindakan ini tidak bisa dibatalkan.")) return;
+                
+                const btn = event.currentTarget;
+                const originalText = btn.innerHTML;
+                btn.disabled = true;
+                btn.innerHTML = '<i class="ph ph-spinner animate-spin"></i> Memproses...';
+
+                try {
+                    const thirtyDaysAgo = new Date();
+                    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+                    
+                    const snap = await getDocs(collection(db, PATH_IZIN));
+                    let count = 0;
+                    
+                    // Delete manual loop (Safe)
+                    for (const d of snap.docs) {
+                        const data = d.data();
+                        if (data.timestamp && new Date(data.timestamp.seconds * 1000) < thirtyDaysAgo) {
+                            await deleteDoc(d.ref);
+                            count++;
+                        }
+                    }
+                    
+                    alert(`Berhasil menghapus ${count} data bukti izin lama.`);
+                } catch (e) {
+                    console.error("Cleanup Error:", e);
+                    alert("Gagal membersihkan data: " + e.message);
+                } finally {
+                    btn.disabled = false;
+                    btn.innerHTML = originalText;
+                }
+            }
+
+            // --- REPORT ---
+            async generateClassReport() {
+                if (!this.user) return;
+                const kelas = document.getElementById('report-class-select').value;
+                if(!kelas) return;
+                
+                const resultDiv = document.getElementById('class-report-result');
+                resultDiv.classList.add('hidden');
+                
+                try {
+                    const today = new Date().toISOString().split('T')[0];
+                    const studentsInClass = Array.from(this.studentMap.entries())
+                        .filter(([id, s]) => s.kelas === kelas)
+                        .map(([id, s]) => ({ id, ...s }));
+                    
+                    const snapAttr = await getDocs(collection(db, PATH_ATTENDANCE));
+                    const snapIzin = await getDocs(collection(db, PATH_IZIN));
+
+                    const attendedToday = snapAttr.docs
+                        .map(d => ({id: d.id, ...d.data()}))
+                        .filter(d => d.id.startsWith(today));
+                    
+                    const izinToday = snapIzin.docs
+                        .map(d => ({id: d.id, ...d.data()}))
+                        .filter(d => d.id.startsWith(today));
+
+                    const hadirIds = attendedToday.map(a => a.nis);
+                    const izinIds = izinToday.map(i => i.nis);
+                    
+                    let stats = { total: studentsInClass.length, hadir: 0, izin: 0, alpha: 0 };
+                    let alphaList = [], izinList = [];
+
+                    studentsInClass.forEach(s => {
+                        if(hadirIds.includes(s.id)) {
+                            stats.hadir++;
+                        } else if(izinIds.includes(s.id)) {
+                            stats.izin++;
+                            const data = izinToday.find(i => i.nis === s.id);
+                            izinList.push(`${s.nama} (${data.tipe === 's' ? 'Sakit' : 'Izin'})`);
+                        } else {
+                            stats.alpha++;
+                            // Include full object for WA function
+                            alphaList.push(s);
+                        }
+                    });
+
+                    document.getElementById('res-total').innerText = stats.total;
+                    document.getElementById('res-hadir').innerText = stats.hadir;
+                    document.getElementById('res-izin').innerText = stats.izin;
+                    document.getElementById('res-alpha').innerText = stats.alpha;
+
+                    document.getElementById('list-alpha').innerHTML = alphaList.length ? alphaList.map(s => {
+                        const parentPhone = s.hp_ortu || s.no_hp || '';
+                        return `
+                        <div class="flex items-center justify-between p-2 bg-red-500/10 rounded-lg border border-red-500/20 mb-1">
+                            <span class="text-red-300 text-xs font-bold truncate mr-2">${s.nama}</span>
+                            <button onclick="picketApp.sendWA('${parentPhone}', '${s.nama}', '${new Date().toLocaleTimeString('id-ID', {hour:'2-digit', minute:'2-digit'})}', 'alpha')" class="w-6 h-6 flex items-center justify-center bg-green-600 hover:bg-green-500 text-white rounded transition" title="WA Ortu">
+                                <i class="ph ph-whatsapp-logo"></i>
+                            </button>
+                        </div>`;
+                    }).join('') : '<div class="text-[10px] italic text-slate-500">Semua hadir/izin.</div>';
+                    
+                    document.getElementById('list-izin').innerHTML = izinList.length ? izinList.map(n => `<div class="p-2 bg-blue-500/10 rounded-lg border border-blue-500/20 text-blue-300 text-xs font-bold">${n}</div>`).join('') : '<div class="text-[10px] italic text-slate-500">Nihil.</div>';
+
+                    resultDiv.classList.remove('hidden');
+                } catch(e) { console.error("Report Error:", e); }
+            }
+
+            switchMainTab(id) {
+                document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active', 'border-indigo-500', 'text-indigo-400'));
+                document.querySelectorAll('.tab-btn').forEach(b => b.classList.add('border-transparent', 'text-slate-500'));
+                
+                document.getElementById('content-live').classList.add('hidden');
+                document.getElementById('content-statistics').classList.add('hidden');
+                document.getElementById('content-class-report').classList.add('hidden');
+                document.getElementById('content-data-student').classList.add('hidden');
+                
+                document.getElementById('content-' + id).classList.remove('hidden');
+                const activeTab = document.getElementById('tab-' + id);
+                if(activeTab) {
+                    activeTab.classList.add('active', 'border-indigo-500', 'text-indigo-400');
+                    activeTab.classList.remove('border-transparent', 'text-slate-500');
+                }
+
+                if(id === 'data-student') this.fetchStudents();
+                if(id === 'statistics') this.generateStatistics();
+            }
+
+            toggleModal(id, show) { document.getElementById(id).classList.toggle('hidden', !show); }
+            
+            async saveSettings() {
+                if (!this.user) return;
+                const time = document.getElementById('setting-late-time').value;
+                try {
+                    await setDoc(doc(db, PATH_CONFIG, 'settings'), { lateThreshold: time });
+                    this.lateThreshold = time;
+                    this.toggleModal('modal-settings', false);
+                    alert("Pengaturan Berhasil Disimpan!");
+                } catch(e) { console.error(e); }
+            }
+            openSettings() { this.toggleModal('modal-settings', true); }
+        }
+        window.picketApp = new PicketApp();
+    </script>
+</body>
+</html>
