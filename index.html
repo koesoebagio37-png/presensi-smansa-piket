@@ -116,7 +116,7 @@
             <h2 class="text-2xl font-bold text-indigo-900 mb-2">Admin Piket</h2>
             <p class="text-xs text-slate-400 mb-6">Database Pusat: Manajemen Siswa</p>
             <form onsubmit="picketApp.login(event)">
-                <input type="password" id="admin-pin" placeholder="PIN Admin (Default: 1234)"
+                <input type="password" id="admin-pin" placeholder=""
                     class="w-full p-4 border-2 border-slate-100 rounded-2xl mb-4 text-center text-lg outline-none focus:ring-4 focus:ring-indigo-100 focus:border-indigo-500 transition-all">
                 <button type="submit" class="w-full bg-indigo-600 text-white py-4 rounded-2xl font-bold hover:bg-indigo-700 transition shadow-lg shadow-indigo-200">
                     Masuk Dashboard
@@ -540,7 +540,7 @@
 
             login(e) {
                 e.preventDefault();
-                if(document.getElementById('admin-pin').value === '1234') {
+                if(document.getElementById('admin-pin').value === '762672') {
                     document.getElementById('view-login').classList.remove('active');
                     document.getElementById('view-dashboard').classList.add('active');
                     this.switchMainTab('live'); // Set default tab to avoid null error
@@ -1375,4 +1375,3 @@
     </script>
 </body>
 </html>
-
