@@ -109,6 +109,10 @@
     <!-- LOGIN SCREEN -->
     <div id="view-login" class="view-section active flex-col items-center justify-center min-h-screen p-4 bg-indigo-900">
         <div class="bg-white p-8 rounded-3xl shadow-2xl w-full max-w-sm text-slate-800 text-center">
+            
+            <!-- LOGO SEKOLAH (LOGIN) -->
+            <img id="logo-login" src="" alt="Logo Sekolah" class="w-24 h-auto mx-auto mb-4 drop-shadow-md">
+            
             <h2 class="text-2xl font-bold text-indigo-900 mb-2">Admin Piket</h2>
             <p class="text-xs text-slate-400 mb-6">Database Pusat: Manajemen Siswa</p>
             <form onsubmit="picketApp.login(event)">
@@ -137,11 +141,14 @@
             </div>
 
             <div class="flex-1 flex flex-col items-center justify-center text-center space-y-6">
-                <!-- TOKEN DISPLAY -->
-                <div class="bg-white/5 p-8 rounded-[3rem] border border-white/10 shadow-[0_0_50px_rgba(79,70,229,0.15)] relative overflow-hidden">
+                <!-- LOGO SEKOLAH (SIDEBAR) -->
+                <img id="logo-sidebar" src="" alt="Logo Sekolah" class="w-20 h-auto mx-auto mb-2 opacity-90 hover:opacity-100 transition-opacity drop-shadow-md">
+
+                <!-- TOKEN DISPLAY (3 DIGIT) -->
+                <div class="bg-white/5 p-8 rounded-[3rem] border border-white/10 shadow-[0_0_50px_rgba(79,70,229,0.15)] relative overflow-hidden w-full max-w-xs">
                     <div class="absolute inset-0 bg-gradient-to-br from-indigo-500/10 to-purple-500/10"></div>
                     <p class="text-indigo-300 text-xs font-bold uppercase tracking-[0.3em] mb-2">Kode Token</p>
-                    <div id="display-token" class="text-8xl md:text-9xl font-mono font-black text-white tracking-widest drop-shadow-2xl">----</div>
+                    <div id="display-token" class="text-8xl font-mono font-black text-white tracking-widest drop-shadow-2xl">---</div>
                 </div>
 
                 <!-- TIMER & CONTROL -->
@@ -192,10 +199,22 @@
                 
                 <!-- PROJECTOR HEADER (Hidden by default, visible in projector mode) -->
                 <div id="projector-header" class="hidden flex-col items-center justify-center p-8 bg-gradient-to-b from-indigo-900 to-slate-900 border-b border-slate-700 shadow-2xl">
-                    <h1 class="text-3xl font-bold text-white mb-4 tracking-tight">PRESENSI SISWA MASUK</h1>
-                    <div class="flex items-center gap-6 bg-white/5 px-8 py-4 rounded-3xl border border-white/10 backdrop-blur-sm">
-                        <span class="text-slate-400 font-bold uppercase tracking-widest text-sm">TOKEN SAAT INI:</span>
-                        <span id="projector-token-value" class="text-6xl font-mono font-black text-white tracking-[0.2em] drop-shadow-lg">----</span>
+                    <h1 class="text-4xl font-bold text-white mb-8 tracking-tight drop-shadow-md">PRESENSI SISWA MASUK</h1>
+                    
+                    <!-- Token Layout Bersama Logo di Kiri -->
+                    <div class="flex items-center bg-white/5 pr-16 pl-10 py-8 rounded-[2.5rem] border border-white/10 backdrop-blur-sm shadow-2xl">
+                        
+                        <!-- LOGO SEKOLAH (LAYAR SISWA - SEBELAH KIRI) -->
+                        <img id="logo-projector" src="" alt="Logo Sekolah" class="h-40 w-auto object-contain mr-10 drop-shadow-[0_0_20px_rgba(255,255,255,0.2)]">
+                        
+                        <!-- Garis Pemisah Visual -->
+                        <div class="h-32 w-px bg-white/20 rounded-full hidden sm:block mr-10"></div>
+
+                        <!-- TOKEN (KANAN) -->
+                        <div class="flex flex-col justify-center text-left">
+                            <span class="text-indigo-300 font-bold uppercase tracking-widest text-sm mb-2">TOKEN SAAT INI</span>
+                            <span id="projector-token-value" class="text-8xl font-mono font-black text-white tracking-[0.15em] drop-shadow-lg leading-none">---</span>
+                        </div>
                     </div>
                 </div>
 
@@ -453,6 +472,21 @@
         const PATH_ATTENDANCE = `artifacts/${APP_ID}/public/data/attendance`;
         const PATH_IZIN = `artifacts/${APP_ID}/public/data/izin_global`;
 
+        // ==========================================
+        // KONFIGURASI LOGO SEKOLAH
+        // ==========================================
+        // Gunakan link Firebase Storage Anda jika ada, atau biarkan kosong untuk pakai logo lokal
+        const LOGO_URL = "https://firebasestorage.googleapis.com/v0/b/aplikasi-ulangan-01.firebasestorage.app/o/logo.png?alt=media&token=a9f14ac1-1af0-4c47-9330-e04be3fcec18"; 
+
+        document.addEventListener("DOMContentLoaded", () => {
+            const logoElements = ['logo-login', 'logo-sidebar', 'logo-projector'];
+            logoElements.forEach(id => {
+                const el = document.getElementById(id);
+                if(el) el.src = LOGO_URL;
+            });
+        });
+        // ==========================================
+
         class PicketApp {
             constructor() {
                 this.lateThreshold = "07:00";
@@ -500,7 +534,7 @@
                 if (!this.user) return;
                 await this.fetchSettings();
                 await this.fetchStudents();
-                // START LISTENING TO SESSION IMMEDIATELY FOR SYNC (FIX POIN 1)
+                // START LISTENING TO SESSION IMMEDIATELY FOR SYNC
                 this.setupSessionListener();
             }
 
@@ -593,7 +627,7 @@
 
             filterStudents() { this.renderStudentList(); }
 
-            // --- TOKEN & TIMER CONTROL ---
+            // --- TOKEN & TIMER CONTROL (MODIFIED FOR 3 DIGIT) ---
             updateInterval() {
                 const val = parseInt(document.getElementById('input-interval').value);
                 if (val >= 5) {
@@ -655,8 +689,8 @@
 
                 const generateAndUpdate = async () => {
                     if (!this.isTokenRunning) return;
-                    const token = Math.floor(1000 + Math.random() * 9000).toString();
-                    // NOTE: Removed setting innerText here, handled by listener
+                    // UPDATED: 3 Digit Logic (100 - 999)
+                    const token = Math.floor(100 + Math.random() * 900).toString();
                     
                     try {
                         await setDoc(doc(db, PATH_CONFIG, 'session'), {
@@ -682,8 +716,9 @@
                 onSnapshot(doc(db, PATH_CONFIG, 'session'), (doc) => {
                     if(doc.exists()) {
                         const data = doc.data();
-                        document.getElementById('display-token').innerText = data.currentToken || '----';
-                        document.getElementById('projector-token-value').innerText = data.currentToken || '----';
+                        const token = data.currentToken || '---';
+                        document.getElementById('display-token').innerText = token;
+                        document.getElementById('projector-token-value').innerText = token;
                         
                         // Sync Timer visualization (Optional visual sugar)
                         if(this.isTokenRunning) {
@@ -709,7 +744,7 @@
                 });
             }
 
-            // --- PROJECTOR MODE LOGIC (MODIFIED FOR SYNC) ---
+            // --- PROJECTOR MODE LOGIC (MODIFIED FOR FULLSCREEN) ---
             toggleProjectorMode() {
                 this.isProjectorMode = !this.isProjectorMode;
                 document.body.classList.toggle('projector-mode', this.isProjectorMode);
@@ -736,7 +771,7 @@
                 } else {
                     // EXIT FULL SCREEN
                     if (document.exitFullscreen) {
-                        document.exitFullscreen();
+                        document.exitFullscreen().catch(err => console.log(err));
                     }
                 }
             }
@@ -787,13 +822,12 @@
                 let message = "";
                 
                 if (type === 'alpha') {
-                    message = `Yth. Wali Murid,\n\nKami informasikan bahwa siswa atas nama *${name}* *BELUM HADIR* di sekolah tanpa keterangan hingga pukul ${time} WIB.\n\nMohon konfirmasinya apakah siswa Sakit, Izin, atau ada kendala lain.\n\n- Admin Piket`;
+                    message = `Yth. Wali Murid,\n\nKami informasikan bahwa siswa atas nama *${name}* *BELUM HADIR* di sekolah tanpa keterangan hingga pukul ${time} WIB.\n\nMohon konfirmasinya apakah siswa Sakit, Izin, atau ada kendala lain.\n\nAdmin Piket`;
                 } else if (type === 's') {
                     message = `Yth. Wali Murid,\n\nKami telah menerima informasi bahwa siswa atas nama *${name}* hari ini *IZIN SAKIT*.\n\nSemoga lekas sembuh dan dapat kembali belajar. Terima kasih.\n\nTetapi jika hal tersebut tanpa sepengetahuan Bpk/Ibu, mohon segera hubungi anak Bpk/Ibu untuk memastikan keberadaannya.\n\nTerima kasih atas perhatian dan kerjasamanya\n\nAdmin Piket`;
                 } else if (type === 'i') {
                     message = `Yth. Wali Murid,\n\nKami telah menerima informasi bahwa siswa atas nama *${name}* hari ini *IZIN TIDAK MASUK* dikarenakan keperluan keluarga/lainnya.\n\nTetapi jika hal tersebut tanpa sepengetahuan Bpk/Ibu, mohon segera hubungi anak Bpk/Ibu untuk memastikan keberadaannya.\n\nTerima kasih atas perhatian dan kerjasamanya\nAdmin Piket`;
                 } else {
-                    // Default: Late / Terlambat
                     message = `Yth. Wali Murid,\n\nKami informasikan bahwa siswa atas nama *${name}* tercatat *TERLAMBAT* masuk sekolah pada pukul ${time} WIB.\n\nMohon kerjasamanya agar siswa dapat hadir tepat waktu. Terima kasih.\n\n- Admin Piket`;
                 }
                 
@@ -832,7 +866,7 @@
                             ? `<span class="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-blue-500/20 text-blue-400 border border-blue-500/30">${item.tipe === 's' ? 'SAKIT' : 'IZIN'}</span>`
                             : `<span class="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${isLate ? 'bg-orange-500/20 text-orange-400 border border-orange-500/30' : 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'}">${item.status}</span>`;
 
-                        // WA Button logic (Updated with correct types and status check)
+                        // WA Button logic (Updated with correct types)
                         let waType = 'late';
                         let waTitle = 'Info Terlambat';
                         if (isIzin) {
@@ -1311,15 +1345,21 @@
             }
 
             switchMainTab(id) {
+                // Style Tabs
                 document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active', 'border-indigo-500', 'text-indigo-400'));
                 document.querySelectorAll('.tab-btn').forEach(b => b.classList.add('border-transparent', 'text-slate-500'));
                 
-                document.getElementById('content-live').classList.add('hidden');
-                document.getElementById('content-statistics').classList.add('hidden');
-                document.getElementById('content-class-report').classList.add('hidden');
-                document.getElementById('content-data-student').classList.add('hidden');
+                // Safety hide all possible content views (using a list to avoid null errors)
+                ['live', 'statistics', 'class-report', 'data-student'].forEach(view => {
+                    const el = document.getElementById('content-' + view);
+                    if(el) el.classList.add('hidden');
+                });
                 
-                document.getElementById('content-' + id).classList.remove('hidden');
+                // Show requested view
+                const target = document.getElementById('content-' + id);
+                if(target) target.classList.remove('hidden');
+                
+                // Style active tab
                 const activeTab = document.getElementById('tab-' + id);
                 if(activeTab) {
                     activeTab.classList.add('active', 'border-indigo-500', 'text-indigo-400');
