@@ -760,19 +760,6 @@
                     const indicator = document.getElementById('status-indicator');
                     btn.innerHTML = '<i class="ph ph-play-circle text-2xl"></i>';
                     indicator.innerHTML = '<span class="w-2 h-2 bg-red-400 rounded-full"></span> PAUSE';
-
-                    // TRIGGER FULL SCREEN
-                    const elem = document.documentElement;
-                    if (elem.requestFullscreen) {
-                        elem.requestFullscreen().catch(err => {
-                            console.log(`Error attempting to enable full-screen mode: ${err.message} (${err.name})`);
-                        });
-                    }
-                } else {
-                    // EXIT FULL SCREEN
-                    if (document.exitFullscreen) {
-                        document.exitFullscreen().catch(err => console.log(err));
-                    }
                 }
             }
 
@@ -1388,3 +1375,4 @@
     </script>
 </body>
 </html>
+
