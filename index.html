@@ -116,7 +116,7 @@
             <h2 class="text-2xl font-bold text-indigo-900 mb-2">Admin Piket</h2>
             <p class="text-xs text-slate-400 mb-6">Database Pusat: Manajemen Siswa</p>
             <form onsubmit="picketApp.login(event)">
-                <input type="password" id="admin-pin" placeholder=""
+                <input type="password" id="admin-pin" placeholder="PIN Admin (Default: 1234)"
                     class="w-full p-4 border-2 border-slate-100 rounded-2xl mb-4 text-center text-lg outline-none focus:ring-4 focus:ring-indigo-100 focus:border-indigo-500 transition-all">
                 <button type="submit" class="w-full bg-indigo-600 text-white py-4 rounded-2xl font-bold hover:bg-indigo-700 transition shadow-lg shadow-indigo-200">
                     Masuk Dashboard
@@ -240,13 +240,17 @@
                 
                 <!-- ROW 1: Charts -->
                 <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                    <!-- Bar Chart: Late Per Month -->
+                    <!-- Bar Chart: Late Trend -->
                     <div class="bg-slate-900/50 p-6 rounded-3xl border border-slate-700 shadow-lg">
                         <div class="flex justify-between items-center mb-4">
                             <h3 class="font-bold text-orange-400 flex items-center gap-2">
                                 <i class="ph ph-trend-up"></i> Tren Keterlambatan
                             </h3>
-                            <span class="text-[10px] bg-slate-800 px-2 py-1 rounded border border-slate-600">Per Bulan</span>
+                            <select id="trend-selector" onchange="picketApp.updateTrendChart()" class="bg-slate-800 border border-slate-600 text-xs rounded px-2 py-1 text-white outline-none cursor-pointer">
+                                <option value="daily">Harian (30 Hari Terakhir)</option>
+                                <option value="weekly">Mingguan</option>
+                                <option value="monthly" selected>Bulanan</option>
+                            </select>
                         </div>
                         <div class="chart-container">
                             <canvas id="chartLateMonth"></canvas>
@@ -515,6 +519,7 @@
                 // Charts Instances
                 this.chartLateMonth = null;
                 this.chartDistribution = null;
+                this.trendStats = null;
                 this.statsDataCache = null;
 
                 this.initAuth();
@@ -540,7 +545,7 @@
 
             login(e) {
                 e.preventDefault();
-                if(document.getElementById('admin-pin').value === '762672') {
+                if(document.getElementById('admin-pin').value === '1234') {
                     document.getElementById('view-login').classList.remove('active');
                     document.getElementById('view-dashboard').classList.add('active');
                     this.switchMainTab('live'); // Set default tab to avoid null error
@@ -627,7 +632,7 @@
 
             filterStudents() { this.renderStudentList(); }
 
-            // --- TOKEN & TIMER CONTROL (MODIFIED FOR 3 DIGIT) ---
+            // --- TOKEN & TIMER CONTROL ---
             updateInterval() {
                 const val = parseInt(document.getElementById('input-interval').value);
                 if (val >= 5) {
@@ -689,7 +694,6 @@
 
                 const generateAndUpdate = async () => {
                     if (!this.isTokenRunning) return;
-                    // UPDATED: 3 Digit Logic (100 - 999)
                     const token = Math.floor(100 + Math.random() * 900).toString();
                     
                     try {
@@ -711,16 +715,15 @@
                 }, 1000);
             }
 
-            // NEW: LISTENER FOR SYNC (WRITER/READER LOGIC)
+            // LISTENER FOR SYNC (WRITER/READER LOGIC)
             setupSessionListener() {
                 onSnapshot(doc(db, PATH_CONFIG, 'session'), (doc) => {
                     if(doc.exists()) {
                         const data = doc.data();
-                        const token = data.currentToken || '---';
-                        document.getElementById('display-token').innerText = token;
-                        document.getElementById('projector-token-value').innerText = token;
+                        document.getElementById('display-token').innerText = data.currentToken || '---';
+                        document.getElementById('projector-token-value').innerText = data.currentToken || '---';
                         
-                        // Sync Timer visualization (Optional visual sugar)
+                        // Sync Timer visualization
                         if(this.isTokenRunning) {
                              const bar = document.getElementById('timer-bar');
                              bar.style.transition = 'none';
@@ -795,7 +798,7 @@
                 this.unsubscribes.push(unsubAttendance);
             }
 
-            // --- SEND WA FUNCTION (UPDATED) ---
+            // --- SEND WA FUNCTION ---
             async sendWA(phone, name, time, type = 'late', docId = null, isIzin = false) {
                 if (!phone) {
                     phone = prompt("Nomor HP Wali Murid tidak ditemukan di database. Masukkan nomor HP (format: 628...):");
@@ -809,13 +812,13 @@
                 let message = "";
                 
                 if (type === 'alpha') {
-                    message = `Yth. Wali Murid,\n\nKami informasikan bahwa siswa atas nama *${name}* *BELUM HADIR* di sekolah tanpa keterangan hingga pukul ${time} WIB.\n\nMohon konfirmasinya apakah siswa Sakit, Izin, atau ada kendala lain.\n\nAdmin Piket`;
+                    message = `Yth. Wali Murid,\nKami informasikan bahwa siswa atas nama *${name}* *BELUM HADIR* di sekolah tanpa keterangan hingga pukul ${time} WIB.\nMohon konfirmasinya apakah siswa Sakit, Izin, atau ada kendala lain.\n\nAdmin Piket`;
                 } else if (type === 's') {
-                    message = `Yth. Wali Murid,\n\nKami telah menerima informasi bahwa siswa atas nama *${name}* hari ini *IZIN SAKIT*.\n\nSemoga lekas sembuh dan dapat kembali belajar. Terima kasih.\n\nTetapi jika hal tersebut tanpa sepengetahuan Bpk/Ibu, mohon segera hubungi anak Bpk/Ibu untuk memastikan keberadaannya.\n\nTerima kasih atas perhatian dan kerjasamanya\n\nAdmin Piket`;
+                    message = `Yth. Wali Murid,\nKami telah menerima informasi bahwa siswa atas nama *${name}* hari ini *IZIN SAKIT*.\nSemoga lekas sembuh dan dapat kembali belajar. Terima kasih.\n\nTetapi jika hal tersebut tanpa sepengetahuan Bpk/Ibu, mohon segera hubungi anak Bpk/Ibu untuk memastikan keberadaannya.\n\nTerima kasih atas perhatian dan kerjasamanya\n\nAdmin Piket`;
                 } else if (type === 'i') {
-                    message = `Yth. Wali Murid,\n\nKami telah menerima informasi bahwa siswa atas nama *${name}* hari ini *IZIN TIDAK MASUK* dikarenakan keperluan keluarga/lainnya.\n\nTetapi jika hal tersebut tanpa sepengetahuan Bpk/Ibu, mohon segera hubungi anak Bpk/Ibu untuk memastikan keberadaannya.\n\nTerima kasih atas perhatian dan kerjasamanya\nAdmin Piket`;
+                    message = `Yth. Wali Murid,\nKami telah menerima informasi bahwa siswa atas nama *${name}* hari ini *IZIN TIDAK MASUK* dikarenakan keperluan keluarga/lainnya.\n\nTetapi jika hal tersebut tanpa sepengetahuan Bpk/Ibu, mohon segera hubungi anak Bpk/Ibu untuk memastikan keberadaannya.\n\nTerima kasih atas perhatian dan kerjasamanya\nAdmin Piket`;
                 } else {
-                    message = `Yth. Wali Murid,\n\nKami informasikan bahwa siswa atas nama *${name}* tercatat *TERLAMBAT* masuk sekolah pada pukul ${time} WIB.\n\nMohon kerjasamanya agar siswa dapat hadir tepat waktu. Terima kasih.\n\n- Admin Piket`;
+                    message = `Yth. Wali Murid,\nKami informasikan bahwa siswa atas nama *${name}* tercatat *TERLAMBAT* masuk sekolah pada pukul ${time} WIB.\nMohon kerjasamanya agar siswa dapat hadir tepat waktu. Terima kasih.\n\nAdmin Piket`;
                 }
                 
                 const url = `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
@@ -1020,6 +1023,8 @@
                     const attendanceSnap = await getDocs(query(collection(db, PATH_ATTENDANCE)));
                     
                     const monthlyStats = {};
+                    const dailyStats = {};
+                    const weeklyStats = {};
                     const studentLateCount = {};
                     const studentLateDuration = {};
 
@@ -1030,10 +1035,18 @@
                         const data = doc.data();
                         if (data.status === 'Terlambat' && data.timestamp) {
                             const date = new Date(data.timestamp.seconds * 1000);
-                            const monthKey = date.toLocaleString('id-ID', { month: 'long' });
                             
-                            // Monthly Stats
+                            // Monthly
+                            const monthKey = date.toLocaleString('id-ID', { month: 'long' });
                             monthlyStats[monthKey] = (monthlyStats[monthKey] || 0) + 1;
+
+                            // Daily (Simple: YYYY-MM-DD for sorting, display DD/MM)
+                            const dayKey = date.toISOString().split('T')[0]; 
+                            dailyStats[dayKey] = (dailyStats[dayKey] || 0) + 1;
+                            
+                            // Weekly (Get week number)
+                            const weekKey = this.getWeekNumber(date);
+                            weeklyStats[weekKey] = (weeklyStats[weekKey] || 0) + 1;
 
                             // Freq Stats
                             studentLateCount[data.nis] = (studentLateCount[data.nis] || 0) + 1;
@@ -1047,23 +1060,74 @@
                         }
                     });
 
-                    this.renderBarChart(monthlyStats);
+                    // Store stats in cache
+                    this.trendStats = {
+                        monthly: monthlyStats,
+                        daily: dailyStats,
+                        weekly: weeklyStats
+                    };
+
+                    this.updateTrendChart(); // Render initial chart
                     this.renderTopLists(studentLateCount, studentLateDuration);
-                    this.renderPieChart(); // Uses live cache
+                    this.renderPieChart();
 
                 } catch (e) {
                     console.error("Stats Error:", e);
                 }
             }
+            
+            getWeekNumber(d) {
+                d = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+                d.setUTCDate(d.getUTCDate() + 4 - (d.getUTCDay()||7));
+                var yearStart = new Date(Date.UTC(d.getUTCFullYear(),0,1));
+                var weekNo = Math.ceil(( ( (d - yearStart) / 86400000) + 1)/7);
+                return `Mg ${weekNo}`;
+            }
 
-            renderBarChart(data) {
+            updateTrendChart() {
+                const selector = document.getElementById('trend-selector');
+                const type = selector ? selector.value : 'monthly';
+                
+                if (!this.trendStats) return;
+
+                let data = this.trendStats[type];
+                let labels = Object.keys(data);
+                
+                // Sorting Logic
+                if (type === 'daily') {
+                    labels.sort(); // YYYY-MM-DD sort works
+                    // Keep only last 30 days
+                    if (labels.length > 30) labels = labels.slice(-30);
+                    // Format display label to DD/MM
+                    const displayLabels = labels.map(l => {
+                        const [y, m, d] = l.split('-');
+                        return `${d}/${m}`;
+                    });
+                     this.renderBarChart(displayLabels, labels.map(k => data[k]));
+                } else if (type === 'weekly') {
+                     // Sort Week 1, Week 2... (Simple string sort is okay for Mg 1, Mg 10)
+                     labels.sort((a, b) => {
+                         const numA = parseInt(a.replace(/\D/g, ''));
+                         const numB = parseInt(b.replace(/\D/g, ''));
+                         return numA - numB;
+                     });
+                     // Last 12 weeks
+                     if (labels.length > 12) labels = labels.slice(-12);
+                     this.renderBarChart(labels, labels.map(k => data[k]));
+                } else {
+                     // Monthly - Sort by month index? Assume chronological insertion for now or simple sort
+                     // Or define month order
+                     const monthOrder = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
+                     labels.sort((a, b) => monthOrder.indexOf(a) - monthOrder.indexOf(b));
+                     this.renderBarChart(labels, labels.map(k => data[k]));
+                }
+            }
+
+
+            renderBarChart(labels, values) {
                 const ctx = document.getElementById('chartLateMonth').getContext('2d');
                 if (this.chartLateMonth) this.chartLateMonth.destroy();
 
-                const labels = Object.keys(data);
-                const values = Object.values(data);
-
-                // Create Gradient
                 const gradient = ctx.createLinearGradient(0, 0, 0, 400);
                 gradient.addColorStop(0, 'rgba(249, 115, 22, 0.8)'); // Orange
                 gradient.addColorStop(1, 'rgba(249, 115, 22, 0.1)');
@@ -1150,6 +1214,52 @@
                         }
                     }
                 });
+            }
+
+            renderTopLists(freqData, durData) {
+                // Top Frequency
+                const sortedFreq = Object.entries(freqData)
+                    .sort((a,b) => b[1] - a[1])
+                    .slice(0, 10);
+                
+                const freqHTML = sortedFreq.map(([nis, count], i) => {
+                    const s = this.studentMap.get(nis) || {nama: 'Unknown'};
+                    return `
+                        <div class="flex items-center justify-between p-3 bg-slate-800 rounded-xl border border-slate-700">
+                            <div class="flex items-center gap-3">
+                                <div class="w-6 h-6 rounded-full bg-slate-700 flex items-center justify-center text-xs font-bold text-slate-400">#${i+1}</div>
+                                <div>
+                                    <p class="text-xs font-bold text-white">${s.nama}</p>
+                                    <p class="text-[10px] text-slate-500 font-mono">${nis}</p>
+                                </div>
+                            </div>
+                            <div class="text-sm font-bold text-orange-400">${count}x</div>
+                        </div>
+                    `;
+                }).join('');
+                document.getElementById('list-top-freq').innerHTML = freqHTML || '<div class="text-center text-slate-600 text-xs">Belum ada data.</div>';
+
+                // Top Duration
+                const sortedDur = Object.entries(durData)
+                    .sort((a,b) => b[1] - a[1])
+                    .slice(0, 10);
+
+                const durHTML = sortedDur.map(([nis, mins], i) => {
+                    const s = this.studentMap.get(nis) || {nama: 'Unknown'};
+                    return `
+                         <div class="flex items-center justify-between p-3 bg-slate-800 rounded-xl border border-slate-700">
+                            <div class="flex items-center gap-3">
+                                <div class="w-6 h-6 rounded-full bg-slate-700 flex items-center justify-center text-xs font-bold text-slate-400">#${i+1}</div>
+                                <div>
+                                    <p class="text-xs font-bold text-white">${s.nama}</p>
+                                    <p class="text-[10px] text-slate-500 font-mono">${nis}</p>
+                                </div>
+                            </div>
+                            <div class="text-sm font-bold text-red-400">${mins} mnt</div>
+                        </div>
+                    `;
+                }).join('');
+                document.getElementById('list-top-duration').innerHTML = durHTML || '<div class="text-center text-slate-600 text-xs">Belum ada data.</div>';
             }
 
             // --- EDIT STATUS & DELETE ---
