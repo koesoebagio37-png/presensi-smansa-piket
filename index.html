@@ -178,10 +178,10 @@
             </div>
         </div>
 
-        <!-- MAIN CONTENT (Added ID for CSS targeting) -->
+        <!-- MAIN CONTENT -->
         <div id="main-content-area" class="w-full md:w-2/3 flex flex-col bg-slate-800 shadow-2xl overflow-hidden relative">
             
-            <!-- BUTTON EXIT PROJECTOR (Hidden by default) -->
+            <!-- BUTTON EXIT PROJECTOR -->
             <button id="exit-projector" onclick="picketApp.toggleProjectorMode()" class="hidden absolute top-6 right-6 z-[60] bg-red-600 hover:bg-red-700 text-white px-6 py-3 rounded-xl backdrop-blur text-lg font-bold border border-white/20 transition shadow-xl">
                 <i class="ph ph-x-circle mr-2"></i> Keluar Layar Penuh
             </button>
@@ -196,21 +196,12 @@
 
             <!-- LIVE MONITOR -->
             <div id="content-live" class="flex-1 flex flex-col overflow-hidden relative">
-                
-                <!-- PROJECTOR HEADER (Hidden by default, visible in projector mode) -->
+                <!-- PROJECTOR HEADER -->
                 <div id="projector-header" class="hidden flex-col items-center justify-center p-8 bg-gradient-to-b from-indigo-900 to-slate-900 border-b border-slate-700 shadow-2xl">
                     <h1 class="text-4xl font-bold text-white mb-8 tracking-tight drop-shadow-md">PRESENSI SISWA MASUK</h1>
-                    
-                    <!-- Token Layout Bersama Logo di Kiri -->
                     <div class="flex items-center bg-white/5 pr-16 pl-10 py-8 rounded-[2.5rem] border border-white/10 backdrop-blur-sm shadow-2xl">
-                        
-                        <!-- LOGO SEKOLAH (LAYAR SISWA - SEBELAH KIRI) -->
                         <img id="logo-projector" src="" alt="Logo Sekolah" class="h-40 w-auto object-contain mr-10 drop-shadow-[0_0_20px_rgba(255,255,255,0.2)]">
-                        
-                        <!-- Garis Pemisah Visual -->
                         <div class="h-32 w-px bg-white/20 rounded-full hidden sm:block mr-10"></div>
-
-                        <!-- TOKEN (KANAN) -->
                         <div class="flex flex-col justify-center text-left">
                             <span class="text-indigo-300 font-bold uppercase tracking-widest text-sm mb-2">TOKEN SAAT INI</span>
                             <span id="projector-token-value" class="text-8xl font-mono font-black text-white tracking-[0.15em] drop-shadow-lg leading-none">---</span>
@@ -235,9 +226,30 @@
                 </div>
             </div>
 
-            <!-- STATISTICS (NEW) -->
+            <!-- STATISTICS (UPDATED) -->
             <div id="content-statistics" class="flex-1 hidden flex-col overflow-y-auto custom-scrollbar p-6 space-y-6">
                 
+                <!-- ACTION BAR STATISTIK & ARSIP (NEW) -->
+                <div class="bg-slate-900/80 p-5 rounded-3xl border border-slate-700 shadow-xl flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
+                    <div>
+                        <h3 class="font-bold text-white text-lg flex items-center gap-2">
+                            <i class="ph ph-chart-bar text-indigo-400 text-xl"></i> Pusat Analitik & Arsip
+                        </h3>
+                        <p class="text-xs text-slate-400 mt-1">Kelola dan amankan data statistik sebelum melakukan pembersihan bulanan.</p>
+                    </div>
+                    <div class="flex flex-wrap gap-2 w-full lg:w-auto">
+                        <button onclick="picketApp.exportStatsData()" class="flex-1 lg:flex-none justify-center px-4 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-xl flex items-center gap-2 transition shadow-lg">
+                            <i class="ph ph-file-xls text-lg"></i> Ekspor Excel
+                        </button>
+                        <button onclick="picketApp.exportCharts()" class="flex-1 lg:flex-none justify-center px-4 py-2.5 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold rounded-xl flex items-center gap-2 transition shadow-lg">
+                            <i class="ph ph-image text-lg"></i> Simpan Grafik
+                        </button>
+                        <button id="btn-clear-stats" onclick="picketApp.clearOldStats()" class="flex-1 lg:flex-none justify-center px-4 py-2.5 bg-red-500/20 hover:bg-red-600 text-red-400 hover:text-white border border-red-500/50 text-xs font-bold rounded-xl flex items-center gap-2 transition shadow-lg">
+                            <i class="ph ph-trash text-lg"></i> Hapus Data Bulan Lalu
+                        </button>
+                    </div>
+                </div>
+
                 <!-- ROW 1: Charts -->
                 <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
                     <!-- Bar Chart: Late Trend -->
@@ -252,7 +264,7 @@
                                 <option value="monthly" selected>Bulanan</option>
                             </select>
                         </div>
-                        <div class="chart-container">
+                        <div class="chart-container bg-slate-900/80 rounded-xl p-2">
                             <canvas id="chartLateMonth"></canvas>
                         </div>
                     </div>
@@ -265,7 +277,7 @@
                             </h3>
                             <span class="text-[10px] bg-slate-800 px-2 py-1 rounded border border-slate-600">Hari Ini</span>
                         </div>
-                        <div class="chart-container flex items-center justify-center">
+                        <div class="chart-container flex items-center justify-center bg-slate-900/80 rounded-xl p-2">
                             <canvas id="chartDistribution"></canvas>
                         </div>
                     </div>
@@ -307,15 +319,17 @@
                     <button onclick="picketApp.generateClassReport()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-3 rounded-xl font-bold transition">Tampilkan</button>
                 </div>
                 <div id="class-report-result" class="flex-1 overflow-y-auto space-y-4 hidden custom-scrollbar">
-                    <div class="grid grid-cols-4 gap-4">
+                    <div class="grid grid-cols-5 gap-4">
                         <div class="p-4 bg-slate-900 rounded-2xl text-center"><span id="res-total" class="block text-2xl font-bold">0</span><span class="text-[10px] text-slate-500">Siswa</span></div>
                         <div class="p-4 bg-emerald-900/20 rounded-2xl text-center"><span id="res-hadir" class="block text-2xl font-bold text-emerald-400">0</span><span class="text-[10px] text-emerald-500">Hadir</span></div>
-                        <div class="p-4 bg-blue-900/20 rounded-2xl text-center"><span id="res-izin" class="block text-2xl font-bold text-blue-400">0</span><span class="text-[10px] text-blue-500">Izin</span></div>
+                        <div class="p-4 bg-blue-900/20 rounded-2xl text-center"><span id="res-sakit" class="block text-2xl font-bold text-blue-400">0</span><span class="text-[10px] text-blue-500">Sakit</span></div>
+                        <div class="p-4 bg-amber-900/20 rounded-2xl text-center"><span id="res-izin" class="block text-2xl font-bold text-amber-400">0</span><span class="text-[10px] text-amber-500">Izin</span></div>
                         <div class="p-4 bg-red-900/20 rounded-2xl text-center"><span id="res-alpha" class="block text-2xl font-bold text-red-400">0</span><span class="text-[10px] text-red-500">Alpha</span></div>
                     </div>
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 pb-10">
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 pb-10">
                         <div class="bg-slate-900/50 p-4 rounded-2xl border border-slate-700"><h4 class="text-xs font-bold text-red-400 uppercase mb-4">Siswa Alpha</h4><div id="list-alpha" class="space-y-2 text-sm text-slate-300"></div></div>
-                        <div class="bg-slate-900/50 p-4 rounded-2xl border border-slate-700"><h4 class="text-xs font-bold text-blue-400 uppercase mb-4">Siswa Izin</h4><div id="list-izin" class="space-y-2 text-sm text-slate-300"></div></div>
+                        <div class="bg-slate-900/50 p-4 rounded-2xl border border-slate-700"><h4 class="text-xs font-bold text-blue-400 uppercase mb-4">Siswa Sakit</h4><div id="list-sakit" class="space-y-2 text-sm text-slate-300"></div></div>
+                        <div class="bg-slate-900/50 p-4 rounded-2xl border border-slate-700"><h4 class="text-xs font-bold text-amber-400 uppercase mb-4">Siswa Izin</h4><div id="list-izin" class="space-y-2 text-sm text-slate-300"></div></div>
                     </div>
                 </div>
             </div>
@@ -367,7 +381,7 @@
         </div>
     </div>
 
-    <!-- MODAL MANUAL INPUT (NEW) -->
+    <!-- MODAL MANUAL INPUT -->
     <div id="modal-manual" class="hidden fixed inset-0 z-[120] modal-overlay flex items-center justify-center p-4">
         <div class="bg-white text-slate-800 rounded-3xl shadow-2xl w-full max-w-sm overflow-hidden animate-bounce-in flex flex-col max-h-[80vh]">
             <div class="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50">
@@ -439,13 +453,13 @@
                 </div>
                 <button onclick="picketApp.saveSettings()" class="w-full bg-indigo-600 text-white py-4 rounded-2xl font-bold shadow-lg shadow-indigo-100">Simpan Konfigurasi</button>
                 
-                <!-- NEW MAINTENANCE SECTION -->
+                <!-- MAINTENANCE SECTION -->
                 <div class="pt-4 border-t border-slate-100 mt-4">
-                    <label class="block text-xs font-bold text-slate-400 uppercase mb-2">Pemeliharaan Data</label>
+                    <label class="block text-xs font-bold text-slate-400 uppercase mb-2">Pemeliharaan Penyimpanan</label>
                     <button onclick="picketApp.cleanOldEvidence()" class="w-full py-3 bg-red-50 text-red-600 font-bold rounded-xl border border-red-100 hover:bg-red-100 transition text-sm flex items-center justify-center gap-2">
                         <i class="ph ph-trash"></i> Hapus Bukti Izin (>30 Hari)
                     </button>
-                    <p class="text-[10px] text-slate-400 mt-2 text-center">Menghapus foto izin lama untuk menghemat penyimpanan.</p>
+                    <p class="text-[10px] text-slate-400 mt-2 text-center">Hanya menghapus gambar. Histori kehadiran tetap aman.</p>
                 </div>
             </div>
         </div>
@@ -491,6 +505,19 @@
         });
         // ==========================================
 
+        // Solid Background Plugin for Chart.js PNG Export
+        const chartBgPlugin = {
+            id: 'customCanvasBackgroundColor',
+            beforeDraw: (chart) => {
+                const ctx = chart.canvas.getContext('2d');
+                ctx.save();
+                ctx.globalCompositeOperation = 'destination-over';
+                ctx.fillStyle = '#1e293b'; // Matches dark slate background
+                ctx.fillRect(0, 0, chart.width, chart.height);
+                ctx.restore();
+            }
+        };
+
         class PicketApp {
             constructor() {
                 this.lateThreshold = "07:00";
@@ -521,6 +548,9 @@
                 this.chartDistribution = null;
                 this.trendStats = null;
                 this.statsDataCache = null;
+                
+                // Stats Cache for Export
+                this.currentStats = null;
 
                 this.initAuth();
             }
@@ -587,12 +617,14 @@
                     this.updateClassSelect();
                 } catch(e) { 
                     console.error("Fetch Student Error:", e); 
-                    document.getElementById('student-table').innerHTML = '<div class="text-center text-red-400 p-4">Gagal memuat data siswa. Cek koneksi.</div>';
+                    const table = document.getElementById('student-table');
+                    if(table) table.innerHTML = '<div class="text-center text-red-400 p-4">Gagal memuat data siswa. Cek koneksi.</div>';
                 }
             }
 
             updateStudentUI() {
-                document.getElementById('count-students').innerText = this.studentMap.size;
+                const countEl = document.getElementById('count-students');
+                if(countEl) countEl.innerText = this.studentMap.size;
                 this.renderStudentList();
             }
 
@@ -608,7 +640,10 @@
 
             renderStudentList() {
                 const container = document.getElementById('student-table');
-                const filter = document.getElementById('search-student').value.toLowerCase();
+                if(!container) return;
+                
+                const searchInput = document.getElementById('search-student');
+                const filter = searchInput ? searchInput.value.toLowerCase() : '';
                 
                 const filtered = Array.from(this.studentMap.entries())
                     .filter(([nis, s]) => (s.nama || "").toLowerCase().includes(filter) || nis.includes(filter))
@@ -805,8 +840,12 @@
                     if (!phone) return;
                 }
                 
-                if (phone.startsWith('08')) {
-                    phone = '62' + phone.substring(1);
+                // PERBAIKAN REGEX: Hapus semua karakter non-angka (seperti spasi, strip, tanda +)
+                let cleanPhone = phone.replace(/\D/g, '');
+                
+                // Jika diawali angka 0, ubah jadi 62
+                if (cleanPhone.startsWith('0')) {
+                    cleanPhone = '62' + cleanPhone.substring(1);
                 }
 
                 let message = "";
@@ -821,7 +860,7 @@
                     message = `Yth. Wali Murid,\nKami informasikan bahwa siswa atas nama *${name}* tercatat *TERLAMBAT* masuk sekolah pada pukul ${time} WIB.\nMohon kerjasamanya agar siswa dapat hadir tepat waktu. Terima kasih.\n\nAdmin Piket`;
                 }
                 
-                const url = `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
+                const url = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(message)}`;
                 window.open(url, '_blank');
 
                 // Update Status WA Sent
@@ -856,15 +895,14 @@
                             ? `<span class="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-blue-500/20 text-blue-400 border border-blue-500/30">${item.tipe === 's' ? 'SAKIT' : 'IZIN'}</span>`
                             : `<span class="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${isLate ? 'bg-orange-500/20 text-orange-400 border border-orange-500/30' : 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'}">${item.status}</span>`;
 
-                        // WA Button logic (Updated with correct types)
+                        // WA Button logic
                         let waType = 'late';
                         let waTitle = 'Info Terlambat';
                         if (isIzin) {
-                            waType = item.tipe; // 's' or 'i'
+                            waType = item.tipe;
                             waTitle = item.tipe === 's' ? 'Konfirmasi Sakit' : 'Konfirmasi Izin';
                         }
 
-                        // Check if WA already sent
                         const isWaSent = item.wa_sent === true;
                         const waBtnColor = isWaSent 
                             ? "bg-slate-700 text-slate-400 cursor-not-allowed" 
@@ -873,17 +911,13 @@
                         const waTooltip = isWaSent ? "WA Sudah Terkirim" : `Kirim WA: ${waTitle}`;
                         const waAction = isWaSent ? "" : `onclick="picketApp.sendWA('${parentPhone}', '${student.nama}', '${timeStr}', '${waType}', '${item.id}', ${isIzin})"`
 
-                        // Hanya tampilkan tombol WA jika Terlambat atau Izin/Sakit (untuk konfirmasi)
                         const showWaBtn = isLate || isIzin;
-
                         const waButton = showWaBtn 
                             ? `<button ${waAction} class="w-8 h-8 flex items-center justify-center ${waBtnColor} rounded-lg transition" title="${waTooltip}">
                                 <i class="ph ${waIcon} text-lg"></i>
                                </button>` 
                             : '';
 
-                        // IMPORTANT: Added 'admin-action' class to hide in projector mode
-                        // ADDED DATA ATTRIBUTE FOR STYLING IN PROJECTOR MODE
                         const statusClass = isIzin ? (item.tipe === 's' ? 'Sakit' : 'Izin') : item.status;
 
                         return `
@@ -956,7 +990,7 @@
                         const nisMatch = cleanNis.includes(cleanKeyword);
                         return nameMatch || nisMatch;
                     })
-                    .slice(0, 5); // Batasi 5 hasil
+                    .slice(0, 5); 
 
                 if (matches.length > 0) {
                     container.innerHTML = matches.map(([nis, s]) => `
@@ -993,7 +1027,6 @@
                 const today = new Date().toISOString().split('T')[0];
                 const docId = `${today}_${nis}`;
 
-                // Cek dulu apakah siswa sudah absen hari ini
                 try {
                     const docSnap = await getDoc(doc(db, PATH_ATTENDANCE, docId));
                     if (docSnap.exists()) {
@@ -1004,7 +1037,7 @@
                         nis, nama, kelas,
                         status: status,
                         timestamp: serverTimestamp(),
-                        method: 'manual' // Tandai sebagai input manual
+                        method: 'manual' 
                     });
 
                     this.closeModal('modal-manual');
@@ -1040,11 +1073,11 @@
                             const monthKey = date.toLocaleString('id-ID', { month: 'long' });
                             monthlyStats[monthKey] = (monthlyStats[monthKey] || 0) + 1;
 
-                            // Daily (Simple: YYYY-MM-DD for sorting, display DD/MM)
+                            // Daily
                             const dayKey = date.toISOString().split('T')[0]; 
                             dailyStats[dayKey] = (dailyStats[dayKey] || 0) + 1;
                             
-                            // Weekly (Get week number)
+                            // Weekly
                             const weekKey = this.getWeekNumber(date);
                             weeklyStats[weekKey] = (weeklyStats[weekKey] || 0) + 1;
 
@@ -1066,8 +1099,16 @@
                         daily: dailyStats,
                         weekly: weeklyStats
                     };
+                    
+                    // Store extra cache for export functionalities
+                    this.currentStats = {
+                        studentLateCount,
+                        studentLateDuration,
+                        monthlyStats,
+                        dailyStats
+                    };
 
-                    this.updateTrendChart(); // Render initial chart
+                    this.updateTrendChart(); 
                     this.renderTopLists(studentLateCount, studentLateDuration);
                     this.renderPieChart();
 
@@ -1093,36 +1134,28 @@
                 let data = this.trendStats[type];
                 let labels = Object.keys(data);
                 
-                // Sorting Logic
                 if (type === 'daily') {
-                    labels.sort(); // YYYY-MM-DD sort works
-                    // Keep only last 30 days
+                    labels.sort(); 
                     if (labels.length > 30) labels = labels.slice(-30);
-                    // Format display label to DD/MM
                     const displayLabels = labels.map(l => {
                         const [y, m, d] = l.split('-');
                         return `${d}/${m}`;
                     });
                      this.renderBarChart(displayLabels, labels.map(k => data[k]));
                 } else if (type === 'weekly') {
-                     // Sort Week 1, Week 2... (Simple string sort is okay for Mg 1, Mg 10)
                      labels.sort((a, b) => {
                          const numA = parseInt(a.replace(/\D/g, ''));
                          const numB = parseInt(b.replace(/\D/g, ''));
                          return numA - numB;
                      });
-                     // Last 12 weeks
                      if (labels.length > 12) labels = labels.slice(-12);
                      this.renderBarChart(labels, labels.map(k => data[k]));
                 } else {
-                     // Monthly - Sort by month index? Assume chronological insertion for now or simple sort
-                     // Or define month order
                      const monthOrder = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
                      labels.sort((a, b) => monthOrder.indexOf(a) - monthOrder.indexOf(b));
                      this.renderBarChart(labels, labels.map(k => data[k]));
                 }
             }
-
 
             renderBarChart(labels, values) {
                 const ctx = document.getElementById('chartLateMonth').getContext('2d');
@@ -1150,7 +1183,8 @@
                         maintainAspectRatio: false,
                         plugins: {
                             legend: { display: false },
-                            tooltip: { backgroundColor: '#1e293b', titleColor: '#fff', bodyColor: '#cbd5e1' }
+                            tooltip: { backgroundColor: '#1e293b', titleColor: '#fff', bodyColor: '#cbd5e1' },
+                            customCanvasBackgroundColor: { color: '#1e293b' }
                         },
                         scales: {
                             y: { 
@@ -1163,7 +1197,8 @@
                                 ticks: { color: '#94a3b8' }
                             }
                         }
-                    }
+                    },
+                    plugins: [chartBgPlugin]
                 });
             }
 
@@ -1180,7 +1215,7 @@
                     if (d.isIzin) {
                         if(d.tipe === 's') sakit++; else izin++;
                     } else {
-                        hadir++; // Tepat & Telat counts as hadir physically
+                        hadir++; 
                     }
                 });
 
@@ -1193,10 +1228,10 @@
                         datasets: [{
                             data: [hadir, sakit, izin, alpha],
                             backgroundColor: [
-                                '#10b981', // Emerald (Hadir)
-                                '#3b82f6', // Blue (Sakit)
-                                '#6366f1', // Indigo (Izin)
-                                '#ef4444'  // Red (Alpha)
+                                '#10b981', // Emerald
+                                '#3b82f6', // Blue
+                                '#6366f1', // Indigo
+                                '#ef4444'  // Red
                             ],
                             borderWidth: 0,
                             hoverOffset: 10
@@ -1210,9 +1245,11 @@
                             legend: { 
                                 position: 'bottom',
                                 labels: { color: '#cbd5e1', padding: 20, usePointStyle: true }
-                            }
+                            },
+                            customCanvasBackgroundColor: { color: '#1e293b' }
                         }
-                    }
+                    },
+                    plugins: [chartBgPlugin]
                 });
             }
 
@@ -1223,14 +1260,14 @@
                     .slice(0, 10);
                 
                 const freqHTML = sortedFreq.map(([nis, count], i) => {
-                    const s = this.studentMap.get(nis) || {nama: 'Unknown'};
+                    const s = this.studentMap.get(nis) || {nama: 'Unknown', kelas: '-'};
                     return `
                         <div class="flex items-center justify-between p-3 bg-slate-800 rounded-xl border border-slate-700">
                             <div class="flex items-center gap-3">
                                 <div class="w-6 h-6 rounded-full bg-slate-700 flex items-center justify-center text-xs font-bold text-slate-400">#${i+1}</div>
                                 <div>
                                     <p class="text-xs font-bold text-white">${s.nama}</p>
-                                    <p class="text-[10px] text-slate-500 font-mono">${nis}</p>
+                                    <p class="text-[10px] text-slate-500 font-mono">${nis} &bull; Kelas ${s.kelas}</p>
                                 </div>
                             </div>
                             <div class="text-sm font-bold text-orange-400">${count}x</div>
@@ -1245,14 +1282,14 @@
                     .slice(0, 10);
 
                 const durHTML = sortedDur.map(([nis, mins], i) => {
-                    const s = this.studentMap.get(nis) || {nama: 'Unknown'};
+                    const s = this.studentMap.get(nis) || {nama: 'Unknown', kelas: '-'};
                     return `
                          <div class="flex items-center justify-between p-3 bg-slate-800 rounded-xl border border-slate-700">
                             <div class="flex items-center gap-3">
                                 <div class="w-6 h-6 rounded-full bg-slate-700 flex items-center justify-center text-xs font-bold text-slate-400">#${i+1}</div>
                                 <div>
                                     <p class="text-xs font-bold text-white">${s.nama}</p>
-                                    <p class="text-[10px] text-slate-500 font-mono">${nis}</p>
+                                    <p class="text-[10px] text-slate-500 font-mono">${nis} &bull; Kelas ${s.kelas}</p>
                                 </div>
                             </div>
                             <div class="text-sm font-bold text-red-400">${mins} mnt</div>
@@ -1260,6 +1297,143 @@
                     `;
                 }).join('');
                 document.getElementById('list-top-duration').innerHTML = durHTML || '<div class="text-center text-slate-600 text-xs">Belum ada data.</div>';
+            }
+
+            // --- EXPORT & CLEAR DATA (NEW FEATURES) ---
+            
+            exportStatsData() {
+                if (!this.currentStats) return alert("Harap tunggu hingga data statistik selesai dimuat.");
+
+                const { studentLateCount, studentLateDuration } = this.currentStats;
+
+                // 1. Format Data Top 10 Sering Terlambat
+                const topFreq = Object.entries(studentLateCount)
+                    .sort((a,b) => b[1] - a[1])
+                    .slice(0, 10)
+                    .map(([nis, count], i) => {
+                        const s = this.studentMap.get(nis) || {};
+                        return {
+                            "Peringkat": i + 1,
+                            "NIS": nis,
+                            "Nama Siswa": s.nama || "Unknown",
+                            "Kelas": s.kelas || "-",
+                            "Frekuensi (Kali)": count
+                        };
+                    });
+
+                // 2. Format Data Top 10 Durasi Terlama
+                const topDur = Object.entries(studentLateDuration)
+                    .sort((a,b) => b[1] - a[1])
+                    .slice(0, 10)
+                    .map(([nis, mins], i) => {
+                        const s = this.studentMap.get(nis) || {};
+                        return {
+                            "Peringkat": i + 1,
+                            "NIS": nis,
+                            "Nama Siswa": s.nama || "Unknown",
+                            "Kelas": s.kelas || "-",
+                            "Total Durasi (Menit)": mins
+                        };
+                    });
+
+                // Jika kosong
+                if (topFreq.length === 0) topFreq.push({"Info": "Tidak ada data keterlambatan."});
+                if (topDur.length === 0) topDur.push({"Info": "Tidak ada data keterlambatan."});
+
+                // Buat Workbook Excel
+                const wb = XLSX.utils.book_new();
+                
+                const wsFreq = XLSX.utils.json_to_sheet(topFreq);
+                const wsDur = XLSX.utils.json_to_sheet(topDur);
+                
+                XLSX.utils.book_append_sheet(wb, wsFreq, "Top 10 Frekuensi");
+                XLSX.utils.book_append_sheet(wb, wsDur, "Top 10 Durasi");
+                
+                const filename = `Statistik_Keterlambatan_${new Date().toISOString().split('T')[0]}.xlsx`;
+                XLSX.writeFile(wb, filename);
+            }
+
+            exportCharts() {
+                const chart1 = document.getElementById('chartLateMonth');
+                const chart2 = document.getElementById('chartDistribution');
+                
+                if (chart1) {
+                    const link = document.createElement('a');
+                    link.download = `Tren_Keterlambatan_${new Date().toISOString().split('T')[0]}.png`;
+                    link.href = chart1.toDataURL('image/png');
+                    link.click();
+                }
+                
+                if (chart2) {
+                    setTimeout(() => { // Kasih jeda sedikit agar tidak bentrok di browser
+                        const link2 = document.createElement('a');
+                        link2.download = `Komposisi_Kehadiran_${new Date().toISOString().split('T')[0]}.png`;
+                        link2.href = chart2.toDataURL('image/png');
+                        link2.click();
+                    }, 500);
+                }
+            }
+
+            async clearOldStats() {
+                const confirmation = prompt(
+                    "PERINGATAN TUTUP BUKU!\n\n" +
+                    "Tindakan ini akan menghapus permanen SEMUA data presensi & izin yang terjadi SEBELUM tanggal 1 bulan ini.\n\n" +
+                    "Pastikan Anda telah melakukan 'Ekspor Excel' & 'Simpan Grafik' sebelum menghapus.\n\n" +
+                    "Ketik 'HAPUS' jika Anda yakin:"
+                );
+
+                if (confirmation !== 'HAPUS') {
+                    if (confirmation !== null) alert("Kata kunci salah. Penghapusan dibatalkan.");
+                    return;
+                }
+
+                const btn = document.getElementById('btn-clear-stats');
+                const originalText = btn.innerHTML;
+                btn.innerHTML = '<i class="ph ph-spinner animate-spin text-lg"></i> Memproses...';
+                btn.disabled = true;
+
+                try {
+                    // Batas waktu: Hari pertama bulan ini
+                    const now = new Date();
+                    const startOfCurrentMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+                    
+                    const attSnap = await getDocs(collection(db, PATH_ATTENDANCE));
+                    const izinSnap = await getDocs(collection(db, PATH_IZIN));
+
+                    let deletedCount = 0;
+
+                    const processDocs = async (snap) => {
+                        const deletePromises = [];
+                        snap.forEach(d => {
+                            const data = d.data();
+                            // Prioritaskan ID format (YYYY-MM-DD_NIS) karena paling konsisten
+                            const dateString = d.id.split('_')[0]; 
+                            if (dateString) {
+                                const docDate = new Date(dateString);
+                                if (docDate < startOfCurrentMonth) {
+                                    deletePromises.push(deleteDoc(d.ref));
+                                    deletedCount++;
+                                }
+                            }
+                        });
+                        await Promise.all(deletePromises);
+                    };
+
+                    await processDocs(attSnap);
+                    await processDocs(izinSnap);
+
+                    alert(`Tutup Buku Berhasil!\n${deletedCount} data dari bulan-bulan sebelumnya telah dihapus.`);
+                    
+                    // Refresh data dan statistik di layar
+                    this.generateStatistics();
+
+                } catch(e) {
+                    console.error("Gagal menghapus data lama:", e);
+                    alert("Gagal menghapus data: " + e.message);
+                } finally {
+                    btn.innerHTML = originalText;
+                    btn.disabled = false;
+                }
             }
 
             // --- EDIT STATUS & DELETE ---
@@ -1338,41 +1512,6 @@
                 if (e.deltaY < 0) this.zoomIn(); else this.zoomOut();
             }
 
-            // --- MAINTENANCE (DELETE OLD PROOFS) ---
-            async cleanOldEvidence() {
-                if (!this.user || !confirm("Yakin ingin menghapus data bukti izin yang lebih dari 30 hari? Tindakan ini tidak bisa dibatalkan.")) return;
-                
-                const btn = event.currentTarget;
-                const originalText = btn.innerHTML;
-                btn.disabled = true;
-                btn.innerHTML = '<i class="ph ph-spinner animate-spin"></i> Memproses...';
-
-                try {
-                    const thirtyDaysAgo = new Date();
-                    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-                    
-                    const snap = await getDocs(collection(db, PATH_IZIN));
-                    let count = 0;
-                    
-                    // Delete manual loop (Safe)
-                    for (const d of snap.docs) {
-                        const data = d.data();
-                        if (data.timestamp && new Date(data.timestamp.seconds * 1000) < thirtyDaysAgo) {
-                            await deleteDoc(d.ref);
-                            count++;
-                        }
-                    }
-                    
-                    alert(`Berhasil menghapus ${count} data bukti izin lama.`);
-                } catch (e) {
-                    console.error("Cleanup Error:", e);
-                    alert("Gagal membersihkan data: " + e.message);
-                } finally {
-                    btn.disabled = false;
-                    btn.innerHTML = originalText;
-                }
-            }
-
             // --- REPORT ---
             async generateClassReport() {
                 if (!this.user) return;
@@ -1402,16 +1541,21 @@
                     const hadirIds = attendedToday.map(a => a.nis);
                     const izinIds = izinToday.map(i => i.nis);
                     
-                    let stats = { total: studentsInClass.length, hadir: 0, izin: 0, alpha: 0 };
-                    let alphaList = [], izinList = [];
+                    let stats = { total: studentsInClass.length, hadir: 0, sakit: 0, izin: 0, alpha: 0 };
+                    let alphaList = [], sakitList = [], izinList = [];
 
                     studentsInClass.forEach(s => {
                         if(hadirIds.includes(s.id)) {
                             stats.hadir++;
                         } else if(izinIds.includes(s.id)) {
-                            stats.izin++;
                             const data = izinToday.find(i => i.nis === s.id);
-                            izinList.push(`${s.nama} (${data.tipe === 's' ? 'Sakit' : 'Izin'})`);
+                            if(data.tipe === 's') {
+                                stats.sakit++;
+                                sakitList.push(s.nama);
+                            } else {
+                                stats.izin++;
+                                izinList.push(s.nama);
+                            }
                         } else {
                             stats.alpha++;
                             // Include full object for WA function
@@ -1421,23 +1565,27 @@
 
                     document.getElementById('res-total').innerText = stats.total;
                     document.getElementById('res-hadir').innerText = stats.hadir;
+                    document.getElementById('res-sakit').innerText = stats.sakit;
                     document.getElementById('res-izin').innerText = stats.izin;
                     document.getElementById('res-alpha').innerText = stats.alpha;
 
                     document.getElementById('list-alpha').innerHTML = alphaList.length ? alphaList.map(s => {
                         const parentPhone = s.hp_ortu || s.no_hp || '';
+                        const safeName = s.nama ? s.nama.replace(/'/g, "\\'") : '';
                         return `
                         <div class="flex items-center justify-between p-2 bg-red-500/10 rounded-lg border border-red-500/20 mb-1">
                             <span class="text-red-300 text-xs font-bold truncate mr-2">${s.nama}</span>
-                            <button onclick="picketApp.sendWA('${parentPhone}', '${s.nama}', '${new Date().toLocaleTimeString('id-ID', {hour:'2-digit', minute:'2-digit'})}', 'alpha')" class="w-6 h-6 flex items-center justify-center bg-green-600 hover:bg-green-500 text-white rounded transition" title="WA Ortu">
+                            <button onclick="picketApp.sendWA('${parentPhone}', '${safeName}', '${new Date().toLocaleTimeString('id-ID', {hour:'2-digit', minute:'2-digit'})}', 'alpha')" class="w-6 h-6 flex items-center justify-center bg-green-600 hover:bg-green-500 text-white rounded transition" title="WA Ortu">
                                 <i class="ph ph-whatsapp-logo"></i>
                             </button>
                         </div>`;
                     }).join('') : '<div class="text-[10px] italic text-slate-500">Semua hadir/izin.</div>';
                     
-                    document.getElementById('list-izin').innerHTML = izinList.length ? izinList.map(n => `<div class="p-2 bg-blue-500/10 rounded-lg border border-blue-500/20 text-blue-300 text-xs font-bold">${n}</div>`).join('') : '<div class="text-[10px] italic text-slate-500">Nihil.</div>';
+                    document.getElementById('list-sakit').innerHTML = sakitList.length ? sakitList.map(n => `<div class="p-2 bg-blue-500/10 rounded-lg border border-blue-500/20 text-blue-300 text-xs font-bold">${n}</div>`).join('') : '<div class="text-[10px] italic text-slate-500">Nihil.</div>';
+                    document.getElementById('list-izin').innerHTML = izinList.length ? izinList.map(n => `<div class="p-2 bg-amber-500/10 rounded-lg border border-amber-500/20 text-amber-300 text-xs font-bold">${n}</div>`).join('') : '<div class="text-[10px] italic text-slate-500">Nihil.</div>';
 
-                    resultDiv.classList.remove('hidden');
+                    const resultDiv = document.getElementById('class-report-result');
+                    if(resultDiv) resultDiv.classList.remove('hidden');
                 } catch(e) { console.error("Report Error:", e); }
             }
 
@@ -1446,7 +1594,7 @@
                 document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active', 'border-indigo-500', 'text-indigo-400'));
                 document.querySelectorAll('.tab-btn').forEach(b => b.classList.add('border-transparent', 'text-slate-500'));
                 
-                // Safety hide all possible content views (using a list to avoid null errors)
+                // Safety hide all possible content views
                 ['live', 'statistics', 'class-report', 'data-student'].forEach(view => {
                     const el = document.getElementById('content-' + view);
                     if(el) el.classList.add('hidden');
